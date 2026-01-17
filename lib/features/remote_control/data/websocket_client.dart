@@ -19,9 +19,12 @@ class KarrolleWebSocketClient {
   bool get isConnected => _socket != null;
 
   Future<void> connect(String ip, {int port = 8080}) async {
+    // Sanitize IP: remove port if user included it (e.g., "192.168.1.1:8080")
+    final cleanIp = ip.split(':').first.trim();
+
     try {
-      logger.i('Connecting to ws://$ip:$port');
-      _socket = await WebSocket.connect('ws://$ip:$port');
+      logger.i('Connecting to ws://$cleanIp:$port');
+      _socket = await WebSocket.connect('ws://$cleanIp:$port');
       logger.i('Connected to server');
       onConnected();
 
