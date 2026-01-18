@@ -43,7 +43,7 @@ class _StudioScreenState extends State<StudioScreen> {
   void _setZoom(double zoom) {
     final currentScale = _transformController.value.getMaxScaleOnAxis();
     final newMatrix = _transformController.value.clone();
-    newMatrix.scale(zoom / currentScale, zoom / currentScale);
+    newMatrix.scale(zoom / currentScale, zoom / currentScale, 1.0);
     _transformController.value = newMatrix;
   }
 

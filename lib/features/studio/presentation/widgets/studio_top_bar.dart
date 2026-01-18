@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:karrolle/features/studio/logic/history_manager.dart';
 import 'package:karrolle/features/studio/logic/export_service.dart';
+import 'package:karrolle/features/studio/logic/studio_controller.dart';
 
 /// Top bar similar to Figma/Canva with logo, menus, and actions
 class StudioTopBar extends StatelessWidget {
@@ -46,6 +47,11 @@ class StudioTopBar extends StatelessWidget {
             _MenuItem('New', Icons.add, onNewDocument ?? () {}),
             _MenuItem('Open', Icons.folder_open, onOpenDocument ?? () {}),
             _MenuItem('Save', Icons.save, onSaveDocument ?? () {}),
+            _MenuItem(
+              'Import PPTX',
+              Icons.upload_file,
+              () => StudioController().importPptx(),
+            ),
             _MenuItem('Export as PNG', Icons.image, () => _exportPng(context)),
             _MenuItem(
               'Export as PDF',

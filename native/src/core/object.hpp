@@ -7,11 +7,11 @@ class SceneObject {
 public:
     int id;
     std::string name;
-    int x, y, w, h;
+    float x, y, w, h;
     
     virtual ~SceneObject() = default;
 
-    SceneObject(int id, std::string name, int x, int y, int w, int h) 
+    SceneObject(int id, std::string name, float x, float y, float w, float h) 
         : id(id), name(std::move(name)), x(x), y(y), w(w), h(h) {}
 
     virtual void draw(uint32_t* buffer, int bufW, int bufH) = 0;
@@ -20,15 +20,15 @@ public:
     virtual int getType() { return 0; }
 
     virtual bool contains(int px, int py) {
-        return (px >= x && px < x + w && py >= y && py < y + h);
+        return (px >= (int)x && px < (int)(x + w) && py >= (int)y && py < (int)(y + h));
     }
 
-    virtual void move(int dx, int dy) {
+    virtual void move(float dx, float dy) {
         x += dx;
         y += dy;
     }
     
-    virtual void setRect(int nx, int ny, int nw, int nh) {
+    virtual void setRect(float nx, float ny, float nw, float nh) {
         x = nx; y = ny; w = nw; h = nh;
     }
     

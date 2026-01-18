@@ -29,10 +29,11 @@ public:
     void clearSelection();
     bool isSelected(int uid);
     int getPrimarySelection(); // Returns first selected or -1
-
+    void moveSelection(float dx, float dy);
+    
     // Helpers
-    void moveObject(int uid, int dx, int dy);
-    void updateObjectRect(int uid, int nx, int ny, int nw, int nh);
+    void moveObject(int uid, float dx, float dy);
+    void updateObjectRect(int uid, float nx, float ny, float nw, float nh);
     void updateObjectColor(int uid, uint32_t col);
     uint32_t getObjectColor(int uid);
     const char* getObjectText(int uid);

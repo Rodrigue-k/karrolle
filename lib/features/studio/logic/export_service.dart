@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:ffi/ffi.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:flutter/material.dart';
+
 import 'package:karrolle/bridge/native_api.dart';
 import 'package:karrolle/core/logger/app_logger.dart';
 import 'package:pdf/pdf.dart';
@@ -148,7 +148,6 @@ class ExportService {
       final pdfImage = pw.MemoryImage(byteData.buffer.asUint8List());
 
       // Calculate page size to match aspect ratio
-      final aspectRatio = width / height;
       final pageFormat = PdfPageFormat(
         width.toDouble(),
         height.toDouble(),
