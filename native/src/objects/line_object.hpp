@@ -9,7 +9,7 @@ public:
     uint32_t color;
     int thickness;
 
-    LineObject(int id, int x1, int y1, int x2, int y2, uint32_t color, int thickness = 2)
+    LineObject(int id, float x1, float y1, float x2, float y2, uint32_t color, int thickness = 2)
         : SceneObject(id, "Line", 
             std::min(x1, x2), std::min(y1, y2),
             std::abs(x2 - x1), std::abs(y2 - y1)), 
@@ -21,10 +21,20 @@ public:
     void setColor(uint32_t c) override { color = c; }
     uint32_t getColor() override { return color; }
 
+    void move(float dx, float dy) override {
+        SceneObject::move(dx, dy);
+        _x1 += dx;
+        _y1 += dy;
+        _x2 += dx;
+        _y2 += dy;
+    }
+
+    // TODO: implement setRect to stretch line endpoints properly
+
     bool contains(int px, int py) override {
         // Simple bounding box + proximity to line
-        float dx = (float)(_x2 - _x1);
-        float dy = (float)(_y2 - _y1);
+        float dx = _x2 - _x1;
+        float dy = _y2 - _y1;
         float len = std::sqrt(dx * dx + dy * dy);
         
         if (len < 1.0f) return false;
@@ -36,14 +46,14 @@ public:
         float projX = _x1 + t * dx;
         float projY = _y1 + t * dy;
         
-        float dist = std::sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
+        float dist = std::sqrt((float)((px - projX) * (px - projX) + (py - projY) * (py - projY)));
         
         return dist <= thickness + 5; // 5px padding for easier selection
     }
 
     void draw(uint32_t* buffer, int bufW, int bufH) override {
         // Bresenham's line algorithm with thickness
-        int x1 = _x1, y1 = _y1, x2 = _x2, y2 = _y2;
+        int x1 = (int)_x1, y1 = (int)_y1, x2 = (int)_x2, y2 = (int)_y2;
         
         int dx = std::abs(x2 - x1);
         int dy = std::abs(y2 - y1);
@@ -78,5 +88,5 @@ public:
     }
 
 private:
-    int _x1, _y1, _x2, _y2; // Actual line endpoints
+    float _x1, _y1, _x2, _y2; // Actual line endpoints
 };

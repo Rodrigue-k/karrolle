@@ -11,8 +11,8 @@ public:
     uint32_t color;
     float fontSize;
 
-    TextObject(int id, int x, int y, std::string txt, uint32_t color, float fontSize = 24.0f)
-        : Object(id, "Text", x, y, 100, 30), text(std::move(txt)), color(color), fontSize(fontSize) {
+    TextObject(int id, float x, float y, std::string txt, uint32_t color, float fontSize = 24.0f)
+        : Object(id, "Text", x, y, 100.0f, 30.0f), text(std::move(txt)), color(color), fontSize(fontSize) {
         recalculateBounds();
     }
 
@@ -33,8 +33,8 @@ public:
 
     bool contains(int px, int py) override {
         int padding = 20;
-        return (px >= x - padding && px < x + w + padding && 
-                py >= y - padding && py < y + h + padding);
+        return (px >= (int)x - padding && px < (int)x + (int)w + padding && 
+                py >= (int)y - padding && py < (int)y + (int)h + padding);
     }
 
     void recalculateBounds() {
@@ -51,8 +51,8 @@ public:
                 cursorX += (int)(adv * sc);
             }
             
-            this->w = cursorX;
-            this->h = (int)((asc - desc) * sc);
+            this->w = (float)cursorX;
+            this->h = (float)((asc - desc) * sc);
         }
     }
 
@@ -64,8 +64,8 @@ public:
         int asc, desc, lg;
         stbtt_GetFontVMetrics(&font.info, &asc, &desc, &lg);
         
-        int baseline = y + (int)(asc * sc);
-        int cursorX = x;
+        int baseline = (int)y + (int)(asc * sc);
+        int cursorX = (int)x;
 
         for (char c : text) {
             int adv, lsb;
@@ -102,7 +102,7 @@ public:
             cursorX += (int)(adv * sc);
         }
         
-        this->w = cursorX - x;
-        this->h = (int)((asc - desc) * sc);
+        this->w = (float)(cursorX - (int)x);
+        this->h = (float)((asc - desc) * sc);
     }
 };

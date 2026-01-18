@@ -8,7 +8,7 @@ class EllipseObject : public SceneObject {
 public:
     uint32_t color;
 
-    EllipseObject(int id, int x, int y, int w, int h, uint32_t color)
+    EllipseObject(int id, float x, float y, float w, float h, uint32_t color)
         : SceneObject(id, "Ellipse", x, y, w, h), color(color) {}
 
     int getType() override { return 3; } // 0=rect, 1=text, 2=image, 3=ellipse
@@ -44,10 +44,10 @@ public:
 
         if (rx <= 0 || ry <= 0) return;
 
-        int x0 = std::max(0, x);
-        int y0 = std::max(0, y);
-        int x1 = std::min(bufW, x + w);
-        int y1 = std::min(bufH, y + h);
+        int x0 = std::max(0, (int)x);
+        int y0 = std::max(0, (int)y);
+        int x1 = std::min(bufW, (int)(x + w));
+        int y1 = std::min(bufH, (int)(y + h));
 
         for (int py = y0; py < y1; ++py) {
             uint32_t* row = buffer + (py * bufW);

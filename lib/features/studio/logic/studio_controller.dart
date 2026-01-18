@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:karrolle/bridge/native_api.dart';
 import 'package:karrolle/core/logger/app_logger.dart';
+import 'package:karrolle/features/studio/logic/history_manager.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
@@ -53,6 +54,9 @@ class StudioController {
   final ValueNotifier<SelectionState?> selectionNotifier = ValueNotifier(null);
   final ValueNotifier<List<LayerInfo>> layersNotifier = ValueNotifier([]);
 
+  // Transaction state for Undo/Redo
+  SelectionState? _transactionStartState;
+
   LayerType _typeIdToLayerType(int typeId) {
     switch (typeId) {
       case 0:
@@ -78,7 +82,17 @@ class StudioController {
         return;
       }
 
-      // Fetch bounds
+      final state = _getObjectState(id);
+      if (state != null) {
+        selectionNotifier.value = state;
+      }
+    } catch (e) {
+      AppLog.e("Error refreshing selection", e);
+    }
+  }
+
+  SelectionState? _getObjectState(int id) {
+    try {
       final pX = calloc<Int32>();
       final pY = calloc<Int32>();
       final pW = calloc<Int32>();
@@ -87,7 +101,6 @@ class StudioController {
       NativeApi.getObjectBounds(id, pX, pY, pW, pH);
       final int color = NativeApi.getObjectColor(id);
 
-      // Determine type
       final typeId = NativeApi.getObjectType(id);
       LayerType type = _typeIdToLayerType(typeId);
 
@@ -98,7 +111,7 @@ class StudioController {
         fontSize = NativeApi.getObjectFontSize(id);
       }
 
-      selectionNotifier.value = SelectionState(
+      final state = SelectionState(
         id: id,
         x: pX.value,
         y: pY.value,
@@ -114,8 +127,10 @@ class StudioController {
       calloc.free(pY);
       calloc.free(pW);
       calloc.free(pH);
+
+      return state;
     } catch (e) {
-      AppLog.e("Error refreshing selection", e);
+      return null;
     }
   }
 
@@ -140,12 +155,67 @@ class StudioController {
     }
   }
 
-  // Action methods updates
-  void updatePosition(int id, int dx, int dy) {
-    if (selectionNotifier.value?.id == id) {
-      refreshSelection();
+  // --- Transaction Management ---
+
+  void startTransaction() {
+    // Capture current selection state
+    if (selectionNotifier.value != null) {
+      _transactionStartState = selectionNotifier.value;
     }
   }
+
+  void commitTransaction() {
+    if (_transactionStartState == null || selectionNotifier.value == null)
+      return;
+
+    final start = _transactionStartState!;
+    final end = selectionNotifier.value!;
+
+    if (start.id != end.id) return; // Different object selected
+
+    // Check for changes
+    if (start.x != end.x || start.y != end.y) {
+      // Moved
+      HistoryManager().executor(
+        MoveCommand(
+          objectId: end.id,
+          oldX: start.x,
+          oldY: start.y,
+          newX: end.x,
+          newY: end.y,
+          w: end.w,
+          h: end.h,
+          setRectFn: (id, x, y, w, h) {
+            NativeApi.setObjectRect(id, x, y, w, h);
+            refreshSelection();
+          },
+        ),
+      );
+    } else if (start.w != end.w || start.h != end.h) {
+      // Resized
+      HistoryManager().executor(
+        ResizeCommand(
+          objectId: end.id,
+          oldX: start.x,
+          oldY: start.y,
+          oldW: start.w,
+          oldH: start.h,
+          newX: end.x,
+          newY: end.y,
+          newW: end.w,
+          newH: end.h,
+          setRectFn: (id, x, y, w, h) {
+            NativeApi.setObjectRect(id, x, y, w, h);
+            refreshSelection();
+          },
+        ),
+      );
+    }
+
+    _transactionStartState = null;
+  }
+
+  // --- Actions ---
 
   void updateSelectionRect(int x, int y, int w, int h) {
     if (selectionNotifier.value == null) return;
@@ -172,8 +242,26 @@ class StudioController {
     if (selectionNotifier.value == null) return;
     final state = selectionNotifier.value!;
     final id = state.id;
+    final oldColor = state.color;
 
     NativeApi.setObjectColor(id, color);
+
+    // Create history command immediately as this is usually atomic (from picker)
+    HistoryManager().executor(
+      ColorCommand(
+        objectId: id,
+        oldColor: oldColor,
+        newColor: color,
+        setColorFn: (id, c) {
+          NativeApi.setObjectColor(id, c);
+          // Refresh selection directly to update UI
+          final s = _getObjectState(id);
+          if (s != null && selectionNotifier.value?.id == id) {
+            selectionNotifier.value = s;
+          }
+        },
+      ),
+    );
 
     // Optimistic update
     selectionNotifier.value = SelectionState(
@@ -195,7 +283,7 @@ class StudioController {
     final id = state.id;
 
     NativeApi.setObjectText(id, text);
-    refreshSelection(); // Geometry might change
+    refreshSelection();
   }
 
   void updateSelectionFontSize(double size) {
@@ -204,11 +292,12 @@ class StudioController {
     final id = state.id;
 
     NativeApi.setObjectFontSize(id, size);
-    refreshSelection(); // Geometry changes
+    refreshSelection();
   }
 
   void removeObject(int uid) {
     try {
+      // TODO: Save object state for Undo
       NativeApi.removeObject(uid);
       refreshLayers();
       refreshSelection();
@@ -224,5 +313,71 @@ class StudioController {
     } catch (e) {
       AppLog.e("Failed to select object", e);
     }
+  }
+
+  // --- Add Objects (with Undo) ---
+
+  void addRectangle() {
+    final id = NativeApi.addRect(100, 100, 200, 150, 0xFF4F46E5);
+    _registerAddCommand(id, "Rectangle");
+    refreshLayers();
+    NativeApi.selectObject(id);
+    refreshSelection();
+  }
+
+  void addEllipse() {
+    final id = NativeApi.addEllipse(100, 100, 150, 150, 0xFFEF4444);
+    _registerAddCommand(id, "Ellipse");
+    refreshLayers();
+    NativeApi.selectObject(id);
+    refreshSelection();
+  }
+
+  void addLine() {
+    final id = NativeApi.addLine(100, 100, 300, 300, 0xFF000000, thickness: 3);
+    _registerAddCommand(id, "Line");
+    refreshLayers();
+    NativeApi.selectObject(id);
+    refreshSelection();
+  }
+
+  void addText() {
+    final id = NativeApi.addText(
+      100,
+      100,
+      "Double click to edit",
+      24.0,
+      0xFF000000,
+    );
+    _registerAddCommand(id, "Text");
+    refreshLayers();
+    NativeApi.selectObject(id);
+    refreshSelection();
+  }
+
+  void _registerAddCommand(int id, String type) {
+    HistoryManager().executor(
+      AddObjectCommand(
+        objectId: id,
+        addFn: () {
+          // Re-adding is complex because ID might change or we need to restore properties
+          // For simple Undo of Add -> Delete. Redo of Add -> we need to restore.
+          // Simplified: We don't support full redo of Add yet without proper serialization
+          // But Undo (Delete) works.
+        },
+        removeFn: (uid) {
+          NativeApi.removeObject(uid);
+          refreshLayers();
+          refreshSelection();
+        },
+        objectType: type,
+      ),
+    );
+  }
+}
+
+extension HistoryManagerExecutor on HistoryManager {
+  void executor(Command cmd) {
+    executeCommand(cmd);
   }
 }

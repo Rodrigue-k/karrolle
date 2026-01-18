@@ -12,7 +12,7 @@ private:
 public:
     std::vector<std::shared_ptr<Object>> objects;
     std::vector<uint8_t> fontDataBlob; 
-    int selectedUid = -1;
+    std::vector<int> selectedUids; // Changed to vector to maintain order if needed, or use set
 
     void setFont(const uint8_t* data, int size);
     int add(std::shared_ptr<Object> obj);
@@ -22,6 +22,13 @@ public:
     void drawSelectionOutline(uint32_t* buffer, int w, int h, Object* obj);
     int pickHandle(int px, int py);
     int pick(int px, int py);
+
+    // Selection
+    void select(int uid, bool addToSelection);
+    void deselect(int uid);
+    void clearSelection();
+    bool isSelected(int uid);
+    int getPrimarySelection(); // Returns first selected or -1
 
     // Helpers
     void moveObject(int uid, int dx, int dy);

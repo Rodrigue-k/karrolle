@@ -35,6 +35,7 @@ set_target_properties(karrolle_engine PROPERTIES OUTPUT_NAME "engine")
 target_include_directories(karrolle_engine PRIVATE 
     include
     src
+    deps
     third_party/zip
     third_party/tinyxml2
 )

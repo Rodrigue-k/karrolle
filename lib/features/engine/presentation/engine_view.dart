@@ -220,6 +220,9 @@ class _EngineViewState extends State<EngineView>
         calloc.free(pW);
         calloc.free(pH);
 
+        // Start transaction for undo/redo
+        StudioController().startTransaction();
+
         // Notify parent that we're dragging
         widget.onDragStart?.call();
         return;
@@ -249,6 +252,9 @@ class _EngineViewState extends State<EngineView>
       calloc.free(pY);
       calloc.free(pW);
       calloc.free(pH);
+
+      // Start transaction for undo/redo
+      StudioController().startTransaction();
 
       // Notify parent that we're dragging
       widget.onDragStart?.call();
@@ -341,6 +347,9 @@ class _EngineViewState extends State<EngineView>
 
   void _handlePointerUp(PointerUpEvent event) {
     if (_draggedObjectId != -1) {
+      // Commit transaction
+      StudioController().commitTransaction();
+
       // Notify parent that drag ended
       widget.onDragEnd?.call();
     }

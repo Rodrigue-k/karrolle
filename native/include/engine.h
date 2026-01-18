@@ -20,11 +20,12 @@ EXPORT void engine_init(int32_t width, int32_t height);
 EXPORT void engine_render(uint32_t* buffer, int32_t width, int32_t height);
 
 // Objects
-EXPORT void engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
-EXPORT void engine_add_ellipse(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
-EXPORT void engine_add_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color, int32_t thickness);
-EXPORT void engine_add_text(int32_t x, int32_t y, const char* text, uint32_t color, float size);
-EXPORT void engine_add_image(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t* pixels, int32_t imgW, int32_t imgH);
+// Objects
+EXPORT int32_t engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
+EXPORT int32_t engine_add_ellipse(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
+EXPORT int32_t engine_add_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color, int32_t thickness);
+EXPORT int32_t engine_add_text(int32_t x, int32_t y, const char* text, uint32_t color, float size);
+EXPORT int32_t engine_add_image(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t* pixels, int32_t imgW, int32_t imgH);
 
 // Font Management
 EXPORT void engine_load_font(const uint8_t* data, int32_t length);

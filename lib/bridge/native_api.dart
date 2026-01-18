@@ -19,17 +19,16 @@ typedef EngineRenderDart =
 
 // Add Objects
 typedef EngineAddRectC =
-    Void Function(Int32 x, Int32 y, Int32 w, Int32 h, Uint32 color);
-typedef EngineAddRectDart =
-    void Function(int x, int y, int w, int h, int color);
+    Int32 Function(Int32 x, Int32 y, Int32 w, Int32 h, Uint32 color);
+typedef EngineAddRectDart = int Function(int x, int y, int w, int h, int color);
 
 typedef EngineAddEllipseC =
-    Void Function(Int32 x, Int32 y, Int32 w, Int32 h, Uint32 color);
+    Int32 Function(Int32 x, Int32 y, Int32 w, Int32 h, Uint32 color);
 typedef EngineAddEllipseDart =
-    void Function(int x, int y, int w, int h, int color);
+    int Function(int x, int y, int w, int h, int color);
 
 typedef EngineAddLineC =
-    Void Function(
+    Int32 Function(
       Int32 x1,
       Int32 y1,
       Int32 x2,
@@ -38,10 +37,10 @@ typedef EngineAddLineC =
       Int32 thickness,
     );
 typedef EngineAddLineDart =
-    void Function(int x1, int y1, int x2, int y2, int color, int thickness);
+    int Function(int x1, int y1, int x2, int y2, int color, int thickness);
 
 typedef EngineAddTextC =
-    Void Function(
+    Int32 Function(
       Int32 x,
       Int32 y,
       Pointer<Utf8> text,
@@ -49,10 +48,10 @@ typedef EngineAddTextC =
       Float size,
     );
 typedef EngineAddTextDart =
-    void Function(int x, int y, Pointer<Utf8> text, int color, double size);
+    int Function(int x, int y, Pointer<Utf8> text, int color, double size);
 
 typedef EngineAddImageC =
-    Void Function(
+    Int32 Function(
       Int32 x,
       Int32 y,
       Int32 w,
@@ -62,7 +61,7 @@ typedef EngineAddImageC =
       Int32 imgH,
     );
 typedef EngineAddImageDart =
-    void Function(
+    int Function(
       int x,
       int y,
       int w,
@@ -322,17 +321,17 @@ class NativeApi {
     _engineRender(buffer, width, height);
   }
 
-  static void addRect(int x, int y, int w, int h, int color) {
+  static int addRect(int x, int y, int w, int h, int color) {
     if (!_initialized) initialize();
-    _engineAddRect(x, y, w, h, color);
+    return _engineAddRect(x, y, w, h, color);
   }
 
-  static void addEllipse(int x, int y, int w, int h, int color) {
+  static int addEllipse(int x, int y, int w, int h, int color) {
     if (!_initialized) initialize();
-    _engineAddEllipse(x, y, w, h, color);
+    return _engineAddEllipse(x, y, w, h, color);
   }
 
-  static void addLine(
+  static int addLine(
     int x1,
     int y1,
     int x2,
@@ -341,17 +340,18 @@ class NativeApi {
     int thickness = 2,
   }) {
     if (!_initialized) initialize();
-    _engineAddLine(x1, y1, x2, y2, color, thickness);
+    return _engineAddLine(x1, y1, x2, y2, color, thickness);
   }
 
-  static void addText(int x, int y, String text, int color, double size) {
+  static int addText(int x, int y, String text, int color, double size) {
     if (!_initialized) initialize();
     final textPtr = text.toNativeUtf8();
-    _engineAddText(x, y, textPtr, color, size);
+    final id = _engineAddText(x, y, textPtr, color, size);
     calloc.free(textPtr);
+    return id;
   }
 
-  static void addImage(
+  static int addImage(
     int x,
     int y,
     int w,
@@ -363,8 +363,9 @@ class NativeApi {
     if (!_initialized) initialize();
     final ptr = calloc<Uint32>(pixels.length);
     ptr.asTypedList(pixels.length).setAll(0, pixels);
-    _engineAddImage(x, y, w, h, ptr, imgW, imgH);
+    final id = _engineAddImage(x, y, w, h, ptr, imgW, imgH);
     calloc.free(ptr);
+    return id;
   }
 
   static void loadFont(Uint8List data) {
