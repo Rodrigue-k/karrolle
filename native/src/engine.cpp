@@ -1,39 +1,28 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "scene_graph.hpp"
 #include "engine.h"
-#include <iostream>
+#include <memory>
 
-// --- Global Engine State ---
-static Scene g_scene;
+Scene g_scene;
 
-// --- Exported Functions ---
-
-void engine_init(int32_t width, int32_t height) {
+void engine_init(int32_t, int32_t) {
     g_scene.clear();
-    std::cout << "[C++] Engine Initialized: " << width << "x" << height << " with Scene Graph & Text" << std::endl;
 }
 
 void engine_render(uint32_t* buffer, int32_t width, int32_t height) {
     g_scene.render(buffer, width, height);
 }
 
-void engine_load_font(const uint8_t* data, int32_t length) {
-    g_scene.setFont(data, length);
-    std::cout << "[C++] Font loaded (" << length << " bytes)" << std::endl;
+void engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) {
+    g_scene.add(std::make_shared<RectangleObject>((int)g_scene.objects.size(), x, y, w, h, color));
 }
 
-void engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) {
-    auto rect = std::make_shared<RectangleObject>(0, x, y, w, h, color);
-    g_scene.add(rect);
-    std::cout << "[C++] Rect added" << std::endl;
+void engine_load_font(const uint8_t* data, int32_t length) {
+    g_scene.setFont(data, length);
 }
 
 void engine_add_text(int32_t x, int32_t y, const char* text, uint32_t color, float size) {
-    if (text) {
-        auto txt = std::make_shared<TextObject>(0, x, y, std::string(text), color, size);
-        g_scene.add(txt);
-        std::cout << "[C++] Text added: " << text << std::endl;
-    }
+    g_scene.add(std::make_shared<TextObject>((int)g_scene.objects.size(), x, y, text, color, size));
 }
 
 int32_t engine_pick(int32_t x, int32_t y) {
@@ -50,7 +39,7 @@ int32_t engine_get_selected_id() {
 
 void engine_get_object_bounds(int32_t id, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
     if (id >= 0 && id < (int)g_scene.objects.size()) {
-        auto obj = g_scene.objects[id];
+        auto& obj = g_scene.objects[id];
         if (x) *x = obj->x;
         if (y) *y = obj->y;
         if (w) *w = obj->w;
@@ -58,3 +47,10 @@ void engine_get_object_bounds(int32_t id, int32_t* x, int32_t* y, int32_t* w, in
     }
 }
 
+void engine_set_object_rect(int32_t id, int32_t x, int32_t y, int32_t w, int32_t h) {
+    g_scene.updateObjectRect(id, x, y, w, h);
+}
+
+void engine_set_object_color(int32_t id, uint32_t color) {
+    g_scene.updateObjectColor(id, color);
+}

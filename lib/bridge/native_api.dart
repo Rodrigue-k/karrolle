@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:ffi/ffi.dart';
 import 'package:karrolle/core/logger/app_logger.dart';
 
-// Typedefs for C functions
+// --- Typedefs for C functions ---
+
 typedef EngineInitC = Void Function(Int32 width, Int32 height);
 typedef EngineInitDart = void Function(int width, int height);
 
@@ -37,6 +38,7 @@ typedef EngineAddTextC =
 typedef EngineAddTextDart =
     void Function(int x, int y, Pointer<Utf8> text, int color, double size);
 
+// Inspection
 typedef EngineGetSelectedIdC = Int32 Function();
 typedef EngineGetSelectedIdDart = int Function();
 
@@ -57,8 +59,18 @@ typedef EngineGetObjectBoundsDart =
       Pointer<Int32> h,
     );
 
+// Updates
+typedef EngineSetObjectRectC =
+    Void Function(Int32 id, Int32 x, Int32 y, Int32 w, Int32 h);
+typedef EngineSetObjectRectDart =
+    void Function(int id, int x, int y, int w, int h);
+
+typedef EngineSetObjectColorC = Void Function(Int32 id, Uint32 color);
+typedef EngineSetObjectColorDart = void Function(int id, int color);
+
 class NativeApi {
   static late DynamicLibrary _lib;
+
   static late EngineInitDart _engineInit;
   static late EngineRenderDart _engineRender;
   static late EngineAddRectDart _engineAddRect;
@@ -69,6 +81,9 @@ class NativeApi {
 
   static late EngineGetSelectedIdDart _engineGetSelectedId;
   static late EngineGetObjectBoundsDart _engineGetObjectBounds;
+
+  static late EngineSetObjectRectDart _engineSetObjectRect;
+  static late EngineSetObjectColorDart _engineSetObjectColor;
 
   static bool _initialized = false;
 
@@ -119,6 +134,15 @@ class NativeApi {
             'engine_get_object_bounds',
           );
 
+      _engineSetObjectRect = _lib
+          .lookupFunction<EngineSetObjectRectC, EngineSetObjectRectDart>(
+            'engine_set_object_rect',
+          );
+      _engineSetObjectColor = _lib
+          .lookupFunction<EngineSetObjectColorC, EngineSetObjectColorDart>(
+            'engine_set_object_color',
+          );
+
       _initialized = true;
       AppLog.i('Native API initialized successfully');
     } catch (e) {
@@ -154,7 +178,6 @@ class NativeApi {
 
   static void loadFont(List<int> bytes) {
     if (!_initialized) initialize();
-    // Allocate memory on native execution stack or heap
     final ptr = calloc<Uint8>(bytes.length);
     final list = ptr.asTypedList(bytes.length);
     list.setAll(0, bytes);
@@ -183,5 +206,15 @@ class NativeApi {
   ) {
     if (!_initialized) initialize();
     _engineGetObjectBounds(id, x, y, w, h);
+  }
+
+  static void setObjectRect(int id, int x, int y, int w, int h) {
+    if (!_initialized) initialize();
+    _engineSetObjectRect(id, x, y, w, h);
+  }
+
+  static void setObjectColor(int id, int color) {
+    if (!_initialized) initialize();
+    _engineSetObjectColor(id, color);
   }
 }

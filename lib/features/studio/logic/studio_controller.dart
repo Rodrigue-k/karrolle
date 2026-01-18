@@ -69,4 +69,14 @@ class StudioController {
       refreshSelection();
     }
   }
+
+  void updateSelectionRect(int x, int y, int w, int h) {
+    if (selectionNotifier.value == null) return;
+    final id = selectionNotifier.value!.id;
+
+    NativeApi.setObjectRect(id, x, y, w, h);
+
+    // Optimistic update
+    selectionNotifier.value = SelectionState(id: id, x: x, y: y, w: w, h: h);
+  }
 }

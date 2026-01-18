@@ -28,7 +28,9 @@ EXPORT void engine_load_font(const uint8_t* data, int32_t length);
 
 // Interaction
 EXPORT int32_t engine_pick(int32_t x, int32_t y);
-EXPORT void engine_move_object(int32_t id, int32_t dx, int32_t dy);
+EXPORT void engine_move_object(int32_t id, int32_t dx, int32_t dy); // Relative move
+EXPORT void engine_set_object_rect(int32_t id, int32_t x, int32_t y, int32_t w, int32_t h); // Absolute update
+EXPORT void engine_set_object_color(int32_t id, uint32_t color);
 
 // Inspection
 EXPORT int32_t engine_get_selected_id();
