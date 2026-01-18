@@ -43,6 +43,7 @@ dependencies:
   archive: ^4.0.7
   xml: ^6.6.1
   ffi: ^2.1.5
+  flutter_colorpicker: ^1.1.0
 
 dev_dependencies:
   flutter_test:

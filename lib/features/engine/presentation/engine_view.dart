@@ -1,12 +1,15 @@
 import 'dart:async';
 import 'dart:ffi';
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
+
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:karrolle/bridge/native_api.dart';
 import 'package:karrolle/core/logger/app_logger.dart';
 import 'package:karrolle/features/studio/logic/studio_controller.dart';
-import '../../../bridge/native_api.dart';
 
 class EngineView extends StatefulWidget {
   const EngineView({super.key});
@@ -15,12 +18,25 @@ class EngineView extends StatefulWidget {
   State<EngineView> createState() => _EngineViewState();
 }
 
-class _EngineViewState extends State<EngineView> {
+class _EngineViewState extends State<EngineView>
+    with SingleTickerProviderStateMixin {
   ui.Image? _image;
-  Timer? _timer;
   Pointer<Uint32>? _buffer;
-  final int _width = 800;
-  final int _height = 600;
+  Ticker? _ticker;
+
+  // Engine Resolution (Fixed Internal Session)
+  static const int _width = 800;
+  static const int _height = 600;
+
+  // Interaction State - Optimized for Zero Latency
+  int _draggedObjectId = -1;
+  int _draggedHandleId = -1; // -1 = Move, 0-7 = Resize
+  int _grabOffsetX = 0;
+  int _grabOffsetY = 0;
+  int _initialX = 0;
+  int _initialY = 0;
+  int _initialW = 0;
+  int _initialH = 0;
 
   @override
   void initState() {
@@ -28,133 +44,228 @@ class _EngineViewState extends State<EngineView> {
     _initEngine();
   }
 
-  void _initEngine() {
+  Future<void> _initEngine() async {
     try {
-      NativeApi.initialize(); // Try load DLL
+      // 1. Initialize FFI
       NativeApi.initEngine(_width, _height);
 
-      // Load Default Font (Windows)
+      StudioController().refreshLayers();
+
+      // 2. Allocate Pixel Buffer (Reuse same buffer)
+      _buffer = calloc<Uint32>(_width * _height);
+
+      // 3. Load Fonts
       if (Platform.isWindows) {
-        try {
-          final fontFile = File(r'C:\Windows\Fonts\arial.ttf');
-          if (fontFile.existsSync()) {
-            final bytes = fontFile.readAsBytesSync();
-            NativeApi.loadFont(bytes);
-            AppLog.i("Loaded Arial font (${bytes.length} bytes)");
-          } else {
-            AppLog.w("Arial font not found");
-          }
-        } catch (e) {
-          AppLog.e("Failed to load font", e);
+        final fontFile = File(r'C:\Windows\Fonts\arial.ttf');
+        if (await fontFile.exists()) {
+          final fontData = await fontFile.readAsBytes();
+          NativeApi.loadFont(fontData);
+          AppLog.i("Loaded Arial font (${fontData.length} bytes)");
         }
       }
 
-      // Allocate buffer in Dart/Native heap
-      _buffer = calloc<Uint32>(_width * _height);
-
-      // Loop to simulate 60 FPS (or slower for test)
-      _timer = Timer.periodic(const Duration(milliseconds: 16), (timer) {
-        _renderFrame();
+      // 4. Start V-Sync Loop (Ticker)
+      // Uses Flutter's scheduler to render EXACTLY when screen refreshes.
+      _ticker = createTicker((elapsed) {
+        _updateTexture();
       });
+      _ticker?.start();
     } catch (e) {
       AppLog.e('Failed to init engine', e);
     }
   }
 
-  void _renderFrame() {
+  void _updateTexture() {
     if (_buffer == null) return;
 
-    // Ask C++ to fill buffer
+    // 1. C++ Render directly to memory
     NativeApi.render(_buffer!, _width, _height);
 
-    // Convert buffer to Image (Expensive in Dart, temporary for Hello World)
-    _decodeImage();
-  }
-
-  Future<void> _decodeImage() async {
-    final pixels = _buffer!.asTypedList(_width * _height);
-    final comp = Completer<ui.Image>();
-
+    // 2. Decode pixels to GPU Texture
     ui.decodeImageFromPixels(
-      pixels.buffer.asUint8List(),
+      _buffer!.cast<Uint8>().asTypedList(_width * _height * 4),
       _width,
       _height,
       ui.PixelFormat.bgra8888,
       (image) {
-        comp.complete(image);
+        if (mounted) {
+          setState(() {
+            _image = image;
+          });
+        }
       },
     );
-
-    final image = await comp.future;
-    if (mounted) {
-      setState(() {
-        _image = image;
-      });
-    }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    if (_buffer != null) calloc.free(_buffer!);
+    _ticker?.dispose();
+    if (_buffer != null) {
+      calloc.free(_buffer!);
+    }
     super.dispose();
   }
 
-  int _draggedObjectId = -1;
-
   @override
   Widget build(BuildContext context) {
-    if (_image == null) {
-      return const Center(
-        child: Text("Loading C++ Engine... (Compile DLL first!)"),
-      );
+    if (_buffer == null) {
+      return const Center(child: CircularProgressIndicator());
     }
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        return GestureDetector(
-          onPanStart: (details) {
-            final renderBox = context.findRenderObject() as RenderBox;
-            final localPos = renderBox.globalToLocal(details.globalPosition);
+        // Pre-calculate scale factors
+        final double scaleX = _width / constraints.maxWidth;
+        final double scaleY = _height / constraints.maxHeight;
 
-            // Calculate scale ratios
-            final double scaleX = _width / constraints.maxWidth;
-            final double scaleY = _height / constraints.maxHeight;
+        return Listener(
+          onPointerDown: (event) {
+            final int cursorX = (event.localPosition.dx * scaleX).toInt();
+            final int cursorY = (event.localPosition.dy * scaleY).toInt();
 
-            final int engineX = (localPos.dx * scaleX).toInt();
-            final int engineY = (localPos.dy * scaleY).toInt();
+            // 1. Check Handle Picking First (If something is already selected)
+            int handleId = NativeApi.pickHandle(cursorX, cursorY);
 
-            final id = NativeApi.pick(engineX, engineY);
-            if (id != -1) {
-              setState(() {
+            if (handleId != -1) {
+              // Start Resizing
+              final id = NativeApi.getSelectedId();
+              if (id != -1) {
+                final pX = calloc<Int32>();
+                final pY = calloc<Int32>();
+                final pW = calloc<Int32>();
+                final pH = calloc<Int32>();
+                NativeApi.getObjectBounds(id, pX, pY, pW, pH);
+
                 _draggedObjectId = id;
-              });
-              AppLog.d('Picked object $id');
+                _draggedHandleId = handleId;
+                _initialX = pX.value;
+                _initialY = pY.value;
+                _initialW = pW.value;
+                _initialH = pH.value;
+                _grabOffsetX = cursorX;
+                _grabOffsetY = cursorY;
+
+                calloc.free(pX);
+                calloc.free(pY);
+                calloc.free(pW);
+                calloc.free(pH);
+                return;
+              }
             }
-            // Always refresh controller even if desselcted (id == -1)
+
+            // 2. Otherwise Pick Object (Normal Move)
+            final id = NativeApi.pick(cursorX, cursorY);
+
+            if (id != -1) {
+              final pX = calloc<Int32>();
+              final pY = calloc<Int32>();
+              final pW = calloc<Int32>();
+              final pH = calloc<Int32>();
+              NativeApi.getObjectBounds(id, pX, pY, pW, pH);
+
+              _draggedObjectId = id;
+              _draggedHandleId = -1;
+              _initialX = pX.value;
+              _initialY = pY.value;
+              _initialW = pW.value;
+              _initialH = pH.value;
+              _grabOffsetX = cursorX - _initialX;
+              _grabOffsetY = cursorY - _initialY;
+
+              calloc.free(pX);
+              calloc.free(pY);
+              calloc.free(pW);
+              calloc.free(pH);
+            } else {
+              _draggedObjectId = -1;
+            }
+
             StudioController().refreshSelection();
           },
-          onPanUpdate: (details) {
-            if (_draggedObjectId != -1) {
-              final double scaleX = _width / constraints.maxWidth;
-              // final double scaleY = _height / constraints.maxHeight; // Not strictly needed if Aspect Ratio is locked
+          onPointerMove: (event) {
+            if (_draggedObjectId == -1) return;
 
-              final int dx = (details.delta.dx * scaleX).toInt();
-              final int dy = (details.delta.dy * scaleX)
-                  .toInt(); // Use scaleX for uniform scaling if locked
+            final int cursorX = (event.localPosition.dx * scaleX).toInt();
+            final int cursorY = (event.localPosition.dy * scaleY).toInt();
 
-              NativeApi.moveObject(_draggedObjectId, dx, dy);
-              // Update UI values in real-time
-              StudioController().refreshSelection();
+            if (_draggedHandleId == -1) {
+              // MOVE
+              final int newX = cursorX - _grabOffsetX;
+              final int newY = cursorY - _grabOffsetY;
+              NativeApi.setObjectRect(
+                _draggedObjectId,
+                newX,
+                newY,
+                _initialW,
+                _initialH,
+              );
+            } else {
+              // RESIZE
+              int dx = cursorX - _grabOffsetX;
+              int dy = cursorY - _grabOffsetY;
+
+              int nx = _initialX;
+              int ny = _initialY;
+              int nw = _initialW;
+              int nh = _initialH;
+
+              switch (_draggedHandleId) {
+                case 0:
+                  nx += dx;
+                  ny += dy;
+                  nw -= dx;
+                  nh -= dy;
+                  break;
+                case 1:
+                  ny += dy;
+                  nh -= dy;
+                  break;
+                case 2:
+                  ny += dy;
+                  nw += dx;
+                  nh -= dy;
+                  break;
+                case 3:
+                  nw += dx;
+                  break;
+                case 4:
+                  nw += dx;
+                  nh += dy;
+                  break;
+                case 5:
+                  nh += dy;
+                  break;
+                case 6:
+                  nx += dx;
+                  nw -= dx;
+                  nh += dy;
+                  break;
+                case 7:
+                  nx += dx;
+                  nw -= dx;
+                  break;
+              }
+
+              if (nw < 10) nw = 10;
+              if (nh < 10) nh = 10;
+
+              NativeApi.setObjectRect(_draggedObjectId, nx, ny, nw, nh);
             }
+
+            StudioController().refreshSelection();
           },
-          onPanEnd: (details) {
+          onPointerUp: (event) {
             _draggedObjectId = -1;
+            _draggedHandleId = -1;
             StudioController().refreshSelection();
           },
-          child: RawImage(
-            image: _image,
-            fit: BoxFit.contain,
-          ), // Use contain to respect aspect ratio
+          child: _image == null
+              ? Container(color: const Color(0xFF252526))
+              : RawImage(
+                  image: _image,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.none,
+                ),
         );
       },
     );

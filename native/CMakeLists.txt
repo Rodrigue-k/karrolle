@@ -12,6 +12,7 @@ add_library(karrolle_engine SHARED
 )
 
 set_target_properties(karrolle_engine PROPERTIES
+    OUTPUT_NAME "engine"
     PUBLIC_HEADER include/engine.h
 )
 

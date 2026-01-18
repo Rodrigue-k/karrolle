@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import 'package:karrolle/features/studio/logic/studio_controller.dart';
 
 class StudioPropertiesPanel extends StatelessWidget {
@@ -7,30 +8,64 @@ class StudioPropertiesPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 240,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
-        border: Border(left: BorderSide(color: Color(0xFF333333))),
+      width: 280,
+      decoration: BoxDecoration(
+        color: const Color(0xFF252526),
+        border: Border(left: BorderSide(color: Colors.white.withOpacity(0.1))),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: ValueListenableBuilder<SelectionState?>(
+              valueListenable: StudioController().selectionNotifier,
+              builder: (context, selection, child) {
+                if (selection == null) {
+                  return _buildNoSelection();
+                }
+                return PropertiesForm(
+                  key: ValueKey(selection.id),
+                  selection: selection,
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
       padding: const EdgeInsets.all(16),
-      child: ValueListenableBuilder<SelectionState?>(
-        valueListenable: StudioController().selectionNotifier,
-        builder: (context, selection, child) {
-          if (selection == null) {
-            return const Center(
-              child: Text(
-                "No Selection",
-                style: TextStyle(color: Colors.white38),
-              ),
-            );
-          }
-          // Use a Key to force rebuild if ID changes completely (new object)
-          // But we want to keep state if just moving same object.
-          return PropertiesForm(
-            key: ValueKey(selection.id),
-            selection: selection,
-          );
-        },
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+        ),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.tune, size: 18, color: Colors.white70),
+          SizedBox(width: 8),
+          Text(
+            "Properties",
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoSelection() {
+    return const Center(
+      child: Text(
+        "No object selected",
+        style: TextStyle(color: Colors.white30, fontSize: 13),
       ),
     );
   }
@@ -38,6 +73,7 @@ class StudioPropertiesPanel extends StatelessWidget {
 
 class PropertiesForm extends StatefulWidget {
   final SelectionState selection;
+
   const PropertiesForm({super.key, required this.selection});
 
   @override
@@ -49,6 +85,8 @@ class _PropertiesFormState extends State<PropertiesForm> {
   late TextEditingController _yCtrl;
   late TextEditingController _wCtrl;
   late TextEditingController _hCtrl;
+  late TextEditingController _textCtrl;
+  late TextEditingController _fontCtrl;
 
   @override
   void initState() {
@@ -57,39 +95,23 @@ class _PropertiesFormState extends State<PropertiesForm> {
     _yCtrl = TextEditingController(text: widget.selection.y.toString());
     _wCtrl = TextEditingController(text: widget.selection.w.toString());
     _hCtrl = TextEditingController(text: widget.selection.h.toString());
+    _textCtrl = TextEditingController(text: widget.selection.text);
+    _fontCtrl = TextEditingController(
+      text: widget.selection.fontSize.toString(),
+    );
   }
 
   @override
   void didUpdateWidget(PropertiesForm oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update controllers if selection changed externally (e.g. drag)
-    // Checking if values match to avoid unnecessary updates
-    if (widget.selection.x.toString() != _xCtrl.text &&
-        !_xCtrl.selection.isValid)
+    if (oldWidget.selection.id != widget.selection.id) {
       _xCtrl.text = widget.selection.x.toString();
-    if (widget.selection.y.toString() != _yCtrl.text &&
-        !_yCtrl.selection.isValid)
       _yCtrl.text = widget.selection.y.toString();
-    if (widget.selection.w.toString() != _wCtrl.text &&
-        !_wCtrl.selection.isValid)
       _wCtrl.text = widget.selection.w.toString();
-    if (widget.selection.h.toString() != _hCtrl.text &&
-        !_hCtrl.selection.isValid)
       _hCtrl.text = widget.selection.h.toString();
-
-    // Note: checking selection.isValid is a cheap way to see if focused.
-    // Ideally we should check FocusNodes. But for this MVP it prevents overwriting while typing (if user is fast).
-    // Actually, simply overwriting is fine because when Dragging we don't type.
-    // When typing, we don't drag.
-    // So:
-    if (widget.selection.x != oldWidget.selection.x)
-      _xCtrl.text = widget.selection.x.toString();
-    if (widget.selection.y != oldWidget.selection.y)
-      _yCtrl.text = widget.selection.y.toString();
-    if (widget.selection.w != oldWidget.selection.w)
-      _wCtrl.text = widget.selection.w.toString();
-    if (widget.selection.h != oldWidget.selection.h)
-      _hCtrl.text = widget.selection.h.toString();
+      _textCtrl.text = widget.selection.text;
+      _fontCtrl.text = widget.selection.fontSize.toString();
+    }
   }
 
   @override
@@ -98,10 +120,12 @@ class _PropertiesFormState extends State<PropertiesForm> {
     _yCtrl.dispose();
     _wCtrl.dispose();
     _hCtrl.dispose();
+    _textCtrl.dispose();
+    _fontCtrl.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  void _submitRect() {
     final x = int.tryParse(_xCtrl.text) ?? widget.selection.x;
     final y = int.tryParse(_yCtrl.text) ?? widget.selection.y;
     final w = int.tryParse(_wCtrl.text) ?? widget.selection.w;
@@ -110,119 +134,215 @@ class _PropertiesFormState extends State<PropertiesForm> {
     StudioController().updateSelectionRect(x, y, w, h);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle('TRANSFORM (ID: ${widget.selection.id})'),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            _buildPropertyInput('X', _xCtrl),
-            const SizedBox(width: 8),
-            _buildPropertyInput('Y', _yCtrl),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            _buildPropertyInput('W', _wCtrl),
-            const SizedBox(width: 8),
-            _buildPropertyInput('H', _hCtrl),
-          ],
-        ),
-
-        const SizedBox(height: 24),
-        const Divider(color: Color(0xFF333333)),
-        const SizedBox(height: 24),
-
-        _buildSectionTitle('APPEARANCE'),
-        const SizedBox(height: 12),
-        _buildColorRow('Fill', const Color(0xFF007AFF)),
-
-        // Add apply button just in case purely intuitive text field submission isn't enough
-        // Actually onSubmitted is handled in inputs
-      ],
-    );
+  void _submitText() {
+    StudioController().updateSelectionText(_textCtrl.text);
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 10,
-        fontWeight: FontWeight.bold,
-        color: Colors.white38,
-        letterSpacing: 1,
-      ),
-    );
+  void _submitFont() {
+    final size = double.tryParse(_fontCtrl.text) ?? widget.selection.fontSize;
+    StudioController().updateSelectionFontSize(size);
   }
 
-  Widget _buildPropertyInput(String label, TextEditingController controller) {
-    return Expanded(
-      child: Row(
-        children: [
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
+  void _showColorPicker() {
+    Color currentColor = Color(widget.selection.color);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Pick a color'),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: currentColor,
+            onColorChanged: (color) {
+              currentColor = color;
+            },
           ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              height: 28,
-              decoration: BoxDecoration(
-                color: const Color(0xFF2C2C2C),
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(color: Colors.white10),
-              ),
-              child: TextField(
-                controller: controller,
-                style: const TextStyle(color: Colors.white70, fontSize: 11),
-                decoration: const InputDecoration(
-                  isDense: true,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 8,
-                  ),
-                  border: InputBorder.none,
-                ),
-                keyboardType: TextInputType.number,
-                onSubmitted: (_) => _submit(),
-                // Also update on focus lost?
-                // Creating a simplified UX: Enter to submit.
-              ),
-            ),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          ElevatedButton(
+            child: const Text('Save'),
+            onPressed: () {
+              StudioController().updateSelectionColor(currentColor.value);
+              Navigator.of(context).pop();
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildColorRow(String label, Color? color) {
-    return Row(
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.all(16),
       children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(
-            color: color ?? Colors.transparent,
-            border: Border.all(color: Colors.white24),
-            borderRadius: BorderRadius.circular(2),
-          ),
+        _buildSection("Layout"),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildField(
+                "X",
+                _xCtrl,
+                onSubmitted: (_) => _submitRect(),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildField(
+                "Y",
+                _yCtrl,
+                onSubmitted: (_) => _submitRect(),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildField(
+                "W",
+                _wCtrl,
+                onSubmitted: (_) => _submitRect(),
+                enabled: widget.selection.type != LayerType.text,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildField(
+                "H",
+                _hCtrl,
+                onSubmitted: (_) => _submitRect(),
+                enabled: widget.selection.type != LayerType.text,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+
+        if (widget.selection.type == LayerType.text) ...[
+          _buildSection("Text Content"),
+          const SizedBox(height: 12),
+          _buildField(
+            "Text",
+            _textCtrl,
+            onSubmitted: (_) => _submitText(),
+            isNumber: false,
+          ),
+          const SizedBox(height: 12),
+          _buildField(
+            "Font Size",
+            _fontCtrl,
+            onSubmitted: (_) => _submitFont(),
+          ),
+          const SizedBox(height: 24),
+        ],
+
+        _buildSection("Appearance"),
+        const SizedBox(height: 12),
+        _buildColorTile("Fill", widget.selection.color),
+      ],
+    );
+  }
+
+  Widget _buildSection(String title) {
+    return Text(
+      title.toUpperCase(),
+      style: const TextStyle(
+        color: Colors.white30,
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
+      ),
+    );
+  }
+
+  Widget _buildField(
+    String label,
+    TextEditingController ctrl, {
+    required ValueChanged<String> onSubmitted,
+    bool isNumber = true,
+    bool enabled = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 12),
+          style: const TextStyle(color: Colors.white54, fontSize: 11),
         ),
-        const Spacer(),
-        if (color != null)
-          Text(
-            '#${color.value.toRadixString(16).toUpperCase()}',
-            style: const TextStyle(color: Colors.white38, fontSize: 10),
+        const SizedBox(height: 4),
+        TextField(
+          controller: ctrl,
+          enabled: enabled,
+          style: TextStyle(
+            color: enabled ? Colors.white : Colors.white24,
+            fontSize: 13,
           ),
+          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 8,
+              vertical: 10,
+            ),
+            fillColor: Colors.white.withOpacity(0.03),
+            filled: true,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(4),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          onSubmitted: onSubmitted,
+        ),
       ],
+    );
+  }
+
+  Widget _buildColorTile(String label, int colorValue) {
+    final color = Color(colorValue);
+    return InkWell(
+      onTap: _showColorPicker,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.white24, width: 1),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const Spacer(),
+            Text(
+              "#${colorValue.toRadixString(16).padLeft(8, '0').toUpperCase()}",
+              style: const TextStyle(
+                color: Colors.white30,
+                fontSize: 11,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
