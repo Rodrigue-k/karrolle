@@ -19,14 +19,15 @@ EXPORT void engine_init(int32_t width, int32_t height);
 // Render
 EXPORT void engine_render(uint32_t* buffer, int32_t width, int32_t height);
 
-// Add Object
+// Objects
 EXPORT void engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
+EXPORT void engine_add_text(int32_t x, int32_t y, const char* text, uint32_t color, float size);
+
+// Font Management
+EXPORT void engine_load_font(const uint8_t* data, int32_t length);
 
 // Interaction
-// Returns the index of the object at (x,y), or -1 if none.
 EXPORT int32_t engine_pick(int32_t x, int32_t y);
-
-// Move an object by delta
 EXPORT void engine_move_object(int32_t id, int32_t dx, int32_t dy);
 
 #ifdef __cplusplus

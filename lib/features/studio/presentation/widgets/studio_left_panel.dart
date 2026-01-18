@@ -22,7 +22,18 @@ class StudioLeftPanel extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildToolIcon(Icons.mouse_rounded, isActive: true),
-                _buildToolIcon(Icons.text_fields),
+                _buildToolIcon(
+                  Icons.text_fields,
+                  onTap: () {
+                    NativeApi.addText(
+                      100,
+                      100,
+                      "Hello Native C++",
+                      0xFFFFFFFF,
+                      32.0,
+                    );
+                  },
+                ),
                 _buildToolIcon(
                   Icons.crop_square,
                   onTap: () {

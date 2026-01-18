@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ffi';
+import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,22 @@ class _EngineViewState extends State<EngineView> {
     try {
       NativeApi.initialize(); // Try load DLL
       NativeApi.initEngine(_width, _height);
+
+      // Load Default Font (Windows)
+      if (Platform.isWindows) {
+        try {
+          final fontFile = File(r'C:\Windows\Fonts\arial.ttf');
+          if (fontFile.existsSync()) {
+            final bytes = fontFile.readAsBytesSync();
+            NativeApi.loadFont(bytes);
+            AppLog.i("Loaded Arial font (${bytes.length} bytes)");
+          } else {
+            AppLog.w("Arial font not found");
+          }
+        } catch (e) {
+          AppLog.e("Failed to load font", e);
+        }
+      }
 
       // Allocate buffer in Dart/Native heap
       _buffer = calloc<Uint32>(_width * _height);
