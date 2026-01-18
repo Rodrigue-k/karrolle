@@ -311,7 +311,7 @@ void engine_import_pptx(const char* filepath) {
                                             if (rPr) {
                                                 const char* sz = rPr->Attribute("sz");
                                                 if (sz) {
-                                                    fontSize = atof(sz) / 100.0f; // Size in hundredths of a point
+                                                    fontSize = (float)atof(sz) / 100.0f; // Size in hundredths of a point
                                                 }
                                                 // Get text color
                                                 XMLElement* solidFill = rPr->FirstChildElement("a:solidFill");
@@ -416,20 +416,20 @@ void engine_render(uint32_t* buffer, int32_t width, int32_t height) {
     g_scene.render(buffer, width, height);
 }
 
-int32_t engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) {
-    int id = g_scene.objects.size() + 1;
+int32_t engine_add_rect(float x, float y, float w, float h, uint32_t color) {
+    int id = (int)g_scene.objects.size() + 1;
     g_scene.add(std::make_shared<RectangleObject>(id, x, y, w, h, color));
     return id;
 }
 
-int32_t engine_add_ellipse(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) {
-    int id = g_scene.objects.size() + 1;
+int32_t engine_add_ellipse(float x, float y, float w, float h, uint32_t color) {
+    int id = (int)g_scene.objects.size() + 1;
     g_scene.add(std::make_shared<EllipseObject>(id, x, y, w, h, color));
     return id;
 }
 
-int32_t engine_add_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color, int32_t thickness) {
-    int id = g_scene.objects.size() + 1;
+int32_t engine_add_line(float x1, float y1, float x2, float y2, uint32_t color, float thickness) {
+    int id = (int)g_scene.objects.size() + 1;
     g_scene.add(std::make_shared<LineObject>(id, x1, y1, x2, y2, color, thickness));
     return id;
 }
@@ -438,14 +438,14 @@ void engine_load_font(const uint8_t* data, int32_t length) {
     g_scene.setFont(data, length);
 }
 
-int32_t engine_add_text(int32_t x, int32_t y, const char* text, uint32_t color, float size) {
-    int id = g_scene.objects.size() + 1;
+int32_t engine_add_text(float x, float y, const char* text, uint32_t color, float size) {
+    int id = (int)g_scene.objects.size() + 1;
     g_scene.add(std::make_shared<TextObject>(id, x, y, text, color, size));
     return id;
 }
 
-int32_t engine_add_image(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t* pixels, int32_t imgW, int32_t imgH) {
-    int id = g_scene.objects.size() + 1;
+int32_t engine_add_image(float x, float y, float w, float h, const uint32_t* pixels, int32_t imgW, int32_t imgH) {
+    int id = (int)g_scene.objects.size() + 1;
     g_scene.add(std::make_shared<ImageObject>(id, x, y, w, h, pixels, imgW, imgH));
     return id;
 }
@@ -458,8 +458,12 @@ int32_t engine_pick_handle(int32_t x, int32_t y) {
     return g_scene.pickHandle(x, y);
 }
 
-void engine_move_object(int32_t id, int32_t dx, int32_t dy) {
+void engine_move_object(int32_t id, float dx, float dy) {
     g_scene.moveObject(id, dx, dy);
+}
+
+void engine_move_selection(float dx, float dy) {
+    g_scene.moveSelection(dx, dy);
 }
 
 int32_t engine_get_selected_id() {
@@ -470,11 +474,26 @@ void engine_remove_object(int32_t id) {
     g_scene.removeObject(id);
 }
 
-void engine_select_object(int32_t id) {
-    g_scene.select(id, false); // Default to single selection exclusive
+void engine_select_object(int32_t id, bool addToSelection) {
+    g_scene.select(id, addToSelection); 
 }
 
-void engine_get_object_bounds(int32_t id, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
+void engine_clear_selection() {
+    g_scene.clearSelection();
+}
+
+int32_t engine_get_selected_count() {
+    return (int32_t)g_scene.selectedUids.size();
+}
+
+int32_t engine_get_selected_id_at(int32_t index) {
+    if (index >= 0 && index < (int32_t)g_scene.selectedUids.size()) {
+        return g_scene.selectedUids[index];
+    }
+    return -1;
+}
+
+void engine_get_object_bounds(int32_t id, float* x, float* y, float* w, float* h) {
     Object* obj = g_scene.getObject(id);
     if (obj) {
         if (x) *x = obj->x;
@@ -484,7 +503,7 @@ void engine_get_object_bounds(int32_t id, int32_t* x, int32_t* y, int32_t* w, in
     }
 }
 
-void engine_set_object_rect(int32_t id, int32_t x, int32_t y, int32_t w, int32_t h) {
+void engine_set_object_rect(int32_t id, float x, float y, float w, float h) {
     g_scene.updateObjectRect(id, x, y, w, h);
 }
 

@@ -248,10 +248,10 @@ class _PropertiesContentState extends State<_PropertiesContent> {
   }
 
   void _submitRect() {
-    final x = int.tryParse(_xCtrl.text) ?? widget.selection.x;
-    final y = int.tryParse(_yCtrl.text) ?? widget.selection.y;
-    final w = int.tryParse(_wCtrl.text) ?? widget.selection.w;
-    final h = int.tryParse(_hCtrl.text) ?? widget.selection.h;
+    final x = double.tryParse(_xCtrl.text) ?? widget.selection.x;
+    final y = double.tryParse(_yCtrl.text) ?? widget.selection.y;
+    final w = double.tryParse(_wCtrl.text) ?? widget.selection.w;
+    final h = double.tryParse(_hCtrl.text) ?? widget.selection.h;
     StudioController().updateSelectionRect(x, y, w, h);
   }
 
@@ -290,7 +290,7 @@ class _PropertiesContentState extends State<_PropertiesContent> {
           ),
           ElevatedButton(
             onPressed: () {
-              StudioController().updateSelectionColor(currentColor.value);
+              StudioController().updateSelectionColor(currentColor.toARGB32());
               Navigator.of(context).pop();
             },
             style: ElevatedButton.styleFrom(
@@ -557,7 +557,7 @@ class _PropertiesContentState extends State<_PropertiesContent> {
               ),
             ),
             Text(
-              '${((color.alpha / 255) * 100).toInt()}%',
+              '${(color.a * 100).toInt()}%',
               style: TextStyle(color: Colors.white.withAlpha(77), fontSize: 11),
             ),
           ],

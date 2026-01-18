@@ -53,10 +53,10 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
           int displayH = (300 / aspect).round();
 
           NativeApi.addImage(
-            100,
-            100,
-            displayW,
-            displayH,
+            100.0,
+            100.0,
+            displayW.toDouble(),
+            displayH.toDouble(),
             pixels,
             image.width,
             image.height,
@@ -322,19 +322,26 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
             runSpacing: 8,
             children: [
               _buildQuickAsset(Icons.crop_square, 'Rectangle', () {
-                NativeApi.addRect(150, 150, 100, 100, 0xFF6366F1);
+                NativeApi.addRect(150.0, 150.0, 100.0, 100.0, 0xFF6366F1);
                 StudioController().refreshLayers();
               }),
               _buildQuickAsset(Icons.circle_outlined, 'Circle', () {
-                NativeApi.addEllipse(150, 150, 100, 100, 0xFF10B981);
+                NativeApi.addEllipse(150.0, 150.0, 100.0, 100.0, 0xFF10B981);
                 StudioController().refreshLayers();
               }),
               _buildQuickAsset(Icons.remove, 'Line', () {
-                NativeApi.addLine(150, 150, 300, 200, 0xFFEF4444, thickness: 3);
+                NativeApi.addLine(
+                  150.0,
+                  150.0,
+                  300.0,
+                  200.0,
+                  0xFFEF4444,
+                  thickness: 3.0,
+                );
                 StudioController().refreshLayers();
               }),
               _buildQuickAsset(Icons.text_fields, 'Text', () {
-                NativeApi.addText(150, 150, 'Your text', 0xFF1A1A1A, 24.0);
+                NativeApi.addText(150.0, 150.0, 'Your text', 0xFF1A1A1A, 24.0);
                 StudioController().refreshLayers();
               }),
             ],

@@ -31,10 +31,10 @@ class StudioLeftPanel extends StatelessWidget {
           int displayH = (200 / aspect).round();
 
           NativeApi.addImage(
-            100,
-            100,
-            displayW,
-            displayH,
+            100.0,
+            100.0,
+            displayW.toDouble(),
+            displayH.toDouble(),
             pixels,
             image.width,
             image.height,
@@ -69,14 +69,20 @@ class StudioLeftPanel extends StatelessWidget {
                 _buildToolIcon(
                   Icons.text_fields,
                   onTap: () {
-                    NativeApi.addText(100, 100, "New Text", 0xFFFFFFFF, 32.0);
+                    NativeApi.addText(
+                      100.0,
+                      100.0,
+                      "New Text",
+                      0xFFFFFFFF,
+                      32.0,
+                    );
                     StudioController().refreshLayers();
                   },
                 ),
                 _buildToolIcon(
                   Icons.crop_square,
                   onTap: () {
-                    NativeApi.addRect(150, 150, 100, 100, 0xFF007AFF);
+                    NativeApi.addRect(150.0, 150.0, 100.0, 100.0, 0xFF007AFF);
                     StudioController().refreshLayers();
                   },
                 ),

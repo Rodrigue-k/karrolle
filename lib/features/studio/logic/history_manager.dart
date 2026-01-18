@@ -16,10 +16,10 @@ abstract class Command {
 /// Command for moving an object
 class MoveCommand extends Command {
   final int objectId;
-  final int oldX, oldY;
-  final int newX, newY;
-  final void Function(int, int, int, int, int) setRectFn;
-  final int w, h;
+  final double oldX, oldY;
+  final double newX, newY;
+  final double w, h;
+  final void Function(int, double, double, double, double) setRectFn;
 
   MoveCommand({
     required this.objectId,
@@ -46,9 +46,9 @@ class MoveCommand extends Command {
 /// Command for resizing an object
 class ResizeCommand extends Command {
   final int objectId;
-  final int oldX, oldY, oldW, oldH;
-  final int newX, newY, newW, newH;
-  final void Function(int, int, int, int, int) setRectFn;
+  final double oldX, oldY, oldW, oldH;
+  final double newX, newY, newW, newH;
+  final void Function(int, double, double, double, double) setRectFn;
 
   ResizeCommand({
     required this.objectId,
@@ -71,6 +71,27 @@ class ResizeCommand extends Command {
   @override
   void undo() {
     setRectFn(objectId, oldX, oldY, oldW, oldH);
+  }
+}
+
+/// Command for grouping multiple commands
+class CompositeCommand extends Command {
+  final List<Command> commands;
+  CompositeCommand(this.commands, {String? description})
+    : super(description ?? 'Group operation');
+
+  @override
+  void execute() {
+    for (var c in commands) {
+      c.execute();
+    }
+  }
+
+  @override
+  void undo() {
+    for (var c in commands.reversed) {
+      c.undo();
+    }
   }
 }
 
@@ -114,6 +135,7 @@ class AddObjectCommand extends Command {
 
   @override
   void execute() {
+    // Usually added by external action first, but can re-run
     addFn();
   }
 
@@ -123,7 +145,7 @@ class AddObjectCommand extends Command {
   }
 }
 
-/// Command for removing an object (stores all object data for restoration)
+/// Command for removing an object
 class RemoveObjectCommand extends Command {
   final int objectId;
   final Map<String, dynamic> objectData;
@@ -171,7 +193,6 @@ class HistoryManager {
     _undoStack.add(command);
     _redoStack.clear();
 
-    // Limit history size
     if (_undoStack.length > maxHistorySize) {
       _undoStack.removeAt(0);
     }
@@ -179,7 +200,7 @@ class HistoryManager {
     _updateNotifiers();
   }
 
-  /// Add a command to history without executing (for external changes)
+  /// Add a command to history without executing (already done by engine)
   void addToHistory(Command command) {
     _undoStack.add(command);
     _redoStack.clear();
@@ -213,6 +234,14 @@ class HistoryManager {
     _updateNotifiers();
   }
 
+  /// Get description of next undo action
+  String? get undoDescription =>
+      _undoStack.isNotEmpty ? _undoStack.last.description : null;
+
+  /// Get description of next redo action
+  String? get redoDescription =>
+      _redoStack.isNotEmpty ? _redoStack.last.description : null;
+
   /// Clear all history
   void clear() {
     _undoStack.clear();
@@ -224,12 +253,4 @@ class HistoryManager {
     canUndoNotifier.value = canUndo;
     canRedoNotifier.value = canRedo;
   }
-
-  /// Get description of next undo action
-  String? get undoDescription =>
-      _undoStack.isNotEmpty ? _undoStack.last.description : null;
-
-  /// Get description of next redo action
-  String? get redoDescription =>
-      _redoStack.isNotEmpty ? _redoStack.last.description : null;
 }

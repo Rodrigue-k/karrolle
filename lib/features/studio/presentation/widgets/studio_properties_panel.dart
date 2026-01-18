@@ -11,7 +11,9 @@ class StudioPropertiesPanel extends StatelessWidget {
       width: 280,
       decoration: BoxDecoration(
         color: const Color(0xFF252526),
-        border: Border(left: BorderSide(color: Colors.white.withOpacity(0.1))),
+        border: Border(
+          left: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -41,7 +43,7 @@ class StudioPropertiesPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         border: Border(
-          bottom: BorderSide(color: Colors.white.withOpacity(0.05)),
+          bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
         ),
       ),
       child: const Row(
@@ -91,13 +93,13 @@ class _PropertiesFormState extends State<PropertiesForm> {
   @override
   void initState() {
     super.initState();
-    _xCtrl = TextEditingController(text: widget.selection.x.toString());
-    _yCtrl = TextEditingController(text: widget.selection.y.toString());
-    _wCtrl = TextEditingController(text: widget.selection.w.toString());
-    _hCtrl = TextEditingController(text: widget.selection.h.toString());
+    _xCtrl = TextEditingController(text: widget.selection.x.toStringAsFixed(1));
+    _yCtrl = TextEditingController(text: widget.selection.y.toStringAsFixed(1));
+    _wCtrl = TextEditingController(text: widget.selection.w.toStringAsFixed(1));
+    _hCtrl = TextEditingController(text: widget.selection.h.toStringAsFixed(1));
     _textCtrl = TextEditingController(text: widget.selection.text);
     _fontCtrl = TextEditingController(
-      text: widget.selection.fontSize.toString(),
+      text: widget.selection.fontSize.toStringAsFixed(1),
     );
   }
 
@@ -105,12 +107,12 @@ class _PropertiesFormState extends State<PropertiesForm> {
   void didUpdateWidget(PropertiesForm oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.selection.id != widget.selection.id) {
-      _xCtrl.text = widget.selection.x.toString();
-      _yCtrl.text = widget.selection.y.toString();
-      _wCtrl.text = widget.selection.w.toString();
-      _hCtrl.text = widget.selection.h.toString();
+      _xCtrl.text = widget.selection.x.toStringAsFixed(1);
+      _yCtrl.text = widget.selection.y.toStringAsFixed(1);
+      _wCtrl.text = widget.selection.w.toStringAsFixed(1);
+      _hCtrl.text = widget.selection.h.toStringAsFixed(1);
       _textCtrl.text = widget.selection.text;
-      _fontCtrl.text = widget.selection.fontSize.toString();
+      _fontCtrl.text = widget.selection.fontSize.toStringAsFixed(1);
     }
   }
 
@@ -126,10 +128,10 @@ class _PropertiesFormState extends State<PropertiesForm> {
   }
 
   void _submitRect() {
-    final x = int.tryParse(_xCtrl.text) ?? widget.selection.x;
-    final y = int.tryParse(_yCtrl.text) ?? widget.selection.y;
-    final w = int.tryParse(_wCtrl.text) ?? widget.selection.w;
-    final h = int.tryParse(_hCtrl.text) ?? widget.selection.h;
+    final x = double.tryParse(_xCtrl.text) ?? widget.selection.x;
+    final y = double.tryParse(_yCtrl.text) ?? widget.selection.y;
+    final w = double.tryParse(_wCtrl.text) ?? widget.selection.w;
+    final h = double.tryParse(_hCtrl.text) ?? widget.selection.h;
 
     StudioController().updateSelectionRect(x, y, w, h);
   }
@@ -166,7 +168,7 @@ class _PropertiesFormState extends State<PropertiesForm> {
           ElevatedButton(
             child: const Text('Save'),
             onPressed: () {
-              StudioController().updateSelectionColor(currentColor.value);
+              StudioController().updateSelectionColor(currentColor.toARGB32());
               Navigator.of(context).pop();
             },
           ),
@@ -291,7 +293,7 @@ class _PropertiesFormState extends State<PropertiesForm> {
               horizontal: 8,
               vertical: 10,
             ),
-            fillColor: Colors.white.withOpacity(0.03),
+            fillColor: Colors.white.withValues(alpha: 0.05),
             filled: true,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(4),
@@ -312,7 +314,7 @@ class _PropertiesFormState extends State<PropertiesForm> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.03),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(

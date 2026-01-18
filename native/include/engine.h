@@ -21,11 +21,12 @@ EXPORT void engine_render(uint32_t* buffer, int32_t width, int32_t height);
 
 // Objects
 // Objects
-EXPORT int32_t engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
-EXPORT int32_t engine_add_ellipse(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color);
-EXPORT int32_t engine_add_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color, int32_t thickness);
-EXPORT int32_t engine_add_text(int32_t x, int32_t y, const char* text, uint32_t color, float size);
-EXPORT int32_t engine_add_image(int32_t x, int32_t y, int32_t w, int32_t h, const uint32_t* pixels, int32_t imgW, int32_t imgH);
+// Objects
+EXPORT int32_t engine_add_rect(float x, float y, float w, float h, uint32_t color);
+EXPORT int32_t engine_add_ellipse(float x, float y, float w, float h, uint32_t color);
+EXPORT int32_t engine_add_line(float x1, float y1, float x2, float y2, uint32_t color, float thickness);
+EXPORT int32_t engine_add_text(float x, float y, const char* text, uint32_t color, float size);
+EXPORT int32_t engine_add_image(float x, float y, float w, float h, const uint32_t* pixels, int32_t imgW, int32_t imgH);
 
 // Font Management
 EXPORT void engine_load_font(const uint8_t* data, int32_t length);
@@ -35,20 +36,24 @@ EXPORT void engine_import_pptx(const char* filepath);
 // Interaction
 EXPORT int32_t engine_pick(int32_t x, int32_t y);
 EXPORT int32_t engine_pick_handle(int32_t x, int32_t y);
-EXPORT void engine_move_object(int32_t id, int32_t dx, int32_t dy); // Relative move
-EXPORT void engine_set_object_rect(int32_t id, int32_t x, int32_t y, int32_t w, int32_t h); // Absolute update
+EXPORT void engine_move_object(int32_t id, float dx, float dy);
+EXPORT void engine_move_selection(float dx, float dy); // Relative move
+EXPORT void engine_set_object_rect(int32_t id, float x, float y, float w, float h); // Absolute update
 EXPORT void engine_set_object_color(int32_t id, uint32_t color);
 
 // Inspection
 EXPORT int32_t engine_get_selected_id();
-EXPORT void engine_get_object_bounds(int32_t id, int32_t* x, int32_t* y, int32_t* w, int32_t* h);
+EXPORT void engine_get_object_bounds(int32_t id, float* x, float* y, float* w, float* h);
 EXPORT uint32_t engine_get_object_color(int32_t id);
 EXPORT int32_t engine_get_object_count();
 EXPORT const char* engine_get_object_name(int32_t index);
 EXPORT int32_t engine_get_object_type(int32_t index);
 EXPORT void engine_remove_object(int32_t id);
 EXPORT int32_t engine_get_object_uid(int32_t index);
-EXPORT void engine_select_object(int32_t id);
+EXPORT void engine_select_object(int32_t id, bool addToSelection);
+EXPORT void engine_clear_selection();
+EXPORT int32_t engine_get_selected_count();
+EXPORT int32_t engine_get_selected_id_at(int32_t index);
 
 EXPORT const char* engine_get_object_text(int32_t id);
 EXPORT void engine_set_object_text(int32_t id, const char* text);

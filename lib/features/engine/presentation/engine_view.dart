@@ -6,6 +6,7 @@ import 'dart:ui' as ui;
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:karrolle/bridge/native_api.dart';
 import 'package:karrolle/core/logger/app_logger.dart';
 import 'package:karrolle/features/studio/logic/studio_controller.dart';
@@ -40,12 +41,12 @@ class _EngineViewState extends State<EngineView>
   // Interaction State
   int _draggedObjectId = -1;
   int _draggedHandleId = -1;
-  int _grabOffsetX = 0;
-  int _grabOffsetY = 0;
-  int _initialX = 0;
-  int _initialY = 0;
-  int _initialW = 0;
-  int _initialH = 0;
+  double _grabOffsetX = 0;
+  double _grabOffsetY = 0;
+  double _initialX = 0;
+  double _initialY = 0;
+  double _initialW = 0;
+  double _initialH = 0;
 
   @override
   void initState() {
@@ -73,7 +74,10 @@ class _EngineViewState extends State<EngineView>
     _buffer = calloc<Uint32>(_width * _height);
 
     NativeApi.initEngine(_width, _height);
-    StudioController().refreshLayers();
+    // Initial layers refresh
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StudioController().refreshLayers();
+    });
   }
 
   Future<void> _initEngine() async {
@@ -200,10 +204,10 @@ class _EngineViewState extends State<EngineView>
     if (handleId != -1) {
       final id = NativeApi.getSelectedId();
       if (id != -1) {
-        final pX = calloc<Int32>();
-        final pY = calloc<Int32>();
-        final pW = calloc<Int32>();
-        final pH = calloc<Int32>();
+        final pX = calloc<Float>();
+        final pY = calloc<Float>();
+        final pW = calloc<Float>();
+        final pH = calloc<Float>();
         NativeApi.getObjectBounds(id, pX, pY, pW, pH);
 
         _draggedObjectId = id;
@@ -212,8 +216,8 @@ class _EngineViewState extends State<EngineView>
         _initialY = pY.value;
         _initialW = pW.value;
         _initialH = pH.value;
-        _grabOffsetX = cursorX;
-        _grabOffsetY = cursorY;
+        _grabOffsetX = (localX * scale);
+        _grabOffsetY = (localY * scale);
 
         calloc.free(pX);
         calloc.free(pY);
@@ -232,11 +236,23 @@ class _EngineViewState extends State<EngineView>
     // Pick object
     final id = NativeApi.pick(cursorX, cursorY);
 
+    // Check validation keys
+    final isShift = HardwareKeyboard.instance.logicalKeysPressed.any(
+      (k) =>
+          k == LogicalKeyboardKey.shiftLeft ||
+          k == LogicalKeyboardKey.shiftRight,
+    );
+
     if (id != -1) {
-      final pX = calloc<Int32>();
-      final pY = calloc<Int32>();
-      final pW = calloc<Int32>();
-      final pH = calloc<Int32>();
+      // Update selection based on input
+      // Note: If clicking an already selected object without shift,
+      // we usually keep selection to allow dragging the group.
+      // For now, simple logic:
+      StudioController().selectObject(id, addToSelection: isShift);
+      final pX = calloc<Float>();
+      final pY = calloc<Float>();
+      final pW = calloc<Float>();
+      final pH = calloc<Float>();
       NativeApi.getObjectBounds(id, pX, pY, pW, pH);
 
       _draggedObjectId = id;
@@ -245,8 +261,14 @@ class _EngineViewState extends State<EngineView>
       _initialY = pY.value;
       _initialW = pW.value;
       _initialH = pH.value;
-      _grabOffsetX = cursorX - _initialX;
-      _grabOffsetY = cursorY - _initialY;
+
+      double currentX = (localX * scale);
+      double currentY = (localY * scale);
+
+      // Store the offset from the object's origin (or handle drag logic)
+      // For relative movement (moveSelection), we track the last cursor position
+      _grabOffsetX = currentX;
+      _grabOffsetY = currentY;
 
       calloc.free(pX);
       calloc.free(pY);
@@ -259,6 +281,9 @@ class _EngineViewState extends State<EngineView>
       // Notify parent that we're dragging
       widget.onDragStart?.call();
     } else {
+      if (!isShift) {
+        StudioController().clearSelection();
+      }
       _draggedObjectId = -1;
     }
 
@@ -275,69 +300,72 @@ class _EngineViewState extends State<EngineView>
 
     final double localX = event.localPosition.dx - offsetX;
     final double localY = event.localPosition.dy - offsetY;
-    final int cursorX = (localX * scale).toInt();
-    final int cursorY = (localY * scale).toInt();
+    final double cursorX = (localX * scale);
+    final double cursorY = (localY * scale);
 
     if (_draggedHandleId == -1) {
       // MOVE
-      final int newX = cursorX - _grabOffsetX;
-      final int newY = cursorY - _grabOffsetY;
-      NativeApi.setObjectRect(
-        _draggedObjectId,
-        newX,
-        newY,
-        _initialW,
-        _initialH,
-      );
-    } else {
-      // RESIZE
-      int dx = cursorX - _grabOffsetX;
-      int dy = cursorY - _grabOffsetY;
+      final double dx = cursorX - _grabOffsetX;
+      final double dy = cursorY - _grabOffsetY;
 
-      int nx = _initialX;
-      int ny = _initialY;
-      int nw = _initialW;
-      int nh = _initialH;
+      // Apply relative movement
+      NativeApi.moveSelection(dx, dy);
+
+      // Update grab point for next delta
+      _grabOffsetX = cursorX;
+      _grabOffsetY = cursorY;
+    } else {
+      // RESIZE (using handle)
+      // Wait, _grabOffsetX was storing initial cursor position for Resize?
+      // In pointerDown: _grabOffsetX = cursorX (absolute)
+
+      double diffX = cursorX - _grabOffsetX;
+      double diffY = cursorY - _grabOffsetY;
+
+      double nx = _initialX;
+      double ny = _initialY;
+      double nw = _initialW;
+      double nh = _initialH;
 
       switch (_draggedHandleId) {
-        case 0:
-          nx += dx;
-          ny += dy;
-          nw -= dx;
-          nh -= dy;
+        case 0: // Top-Left
+          nx += diffX;
+          ny += diffY;
+          nw -= diffX;
+          nh -= diffY;
           break;
-        case 1:
-          ny += dy;
-          nh -= dy;
+        case 1: // Top-Middle
+          ny += diffY;
+          nh -= diffY;
           break;
-        case 2:
-          ny += dy;
-          nw += dx;
-          nh -= dy;
+        case 2: // Top-Right
+          ny += diffY;
+          nw += diffX;
+          nh -= diffY;
           break;
-        case 3:
-          nw += dx;
+        case 3: // Right-Middle
+          nw += diffX;
           break;
-        case 4:
-          nw += dx;
-          nh += dy;
+        case 4: // Bottom-Right
+          nw += diffX;
+          nh += diffY;
           break;
-        case 5:
-          nh += dy;
+        case 5: // Bottom-Middle
+          nh += diffY;
           break;
-        case 6:
-          nx += dx;
-          nw -= dx;
-          nh += dy;
+        case 6: // Bottom-Left
+          nx += diffX;
+          nw -= diffX;
+          nh += diffY;
           break;
-        case 7:
-          nx += dx;
-          nw -= dx;
+        case 7: // Left-Middle
+          nx += diffX;
+          nw -= diffX;
           break;
       }
 
-      if (nw < 10) nw = 10;
-      if (nh < 10) nh = 10;
+      if (nw < 1.0) nw = 1.0;
+      if (nh < 1.0) nh = 1.0;
 
       NativeApi.setObjectRect(_draggedObjectId, nx, ny, nw, nh);
     }

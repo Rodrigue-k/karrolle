@@ -19,53 +19,67 @@ typedef EngineRenderDart =
 
 // Add Objects
 typedef EngineAddRectC =
-    Int32 Function(Int32 x, Int32 y, Int32 w, Int32 h, Uint32 color);
-typedef EngineAddRectDart = int Function(int x, int y, int w, int h, int color);
+    Int32 Function(Float x, Float y, Float w, Float h, Uint32 color);
+typedef EngineAddRectDart =
+    int Function(double x, double y, double w, double h, int color);
 
 typedef EngineAddEllipseC =
-    Int32 Function(Int32 x, Int32 y, Int32 w, Int32 h, Uint32 color);
+    Int32 Function(Float x, Float y, Float w, Float h, Uint32 color);
 typedef EngineAddEllipseDart =
-    int Function(int x, int y, int w, int h, int color);
+    int Function(double x, double y, double w, double h, int color);
 
 typedef EngineAddLineC =
     Int32 Function(
-      Int32 x1,
-      Int32 y1,
-      Int32 x2,
-      Int32 y2,
+      Float x1,
+      Float y1,
+      Float x2,
+      Float y2,
       Uint32 color,
-      Int32 thickness,
+      Float thickness,
     );
 typedef EngineAddLineDart =
-    int Function(int x1, int y1, int x2, int y2, int color, int thickness);
+    int Function(
+      double x1,
+      double y1,
+      double x2,
+      double y2,
+      int color,
+      double thickness,
+    );
 
 typedef EngineAddTextC =
     Int32 Function(
-      Int32 x,
-      Int32 y,
+      Float x,
+      Float y,
       Pointer<Utf8> text,
       Uint32 color,
       Float size,
     );
 typedef EngineAddTextDart =
-    int Function(int x, int y, Pointer<Utf8> text, int color, double size);
+    int Function(
+      double x,
+      double y,
+      Pointer<Utf8> text,
+      int color,
+      double size,
+    );
 
 typedef EngineAddImageC =
     Int32 Function(
-      Int32 x,
-      Int32 y,
-      Int32 w,
-      Int32 h,
+      Float x,
+      Float y,
+      Float w,
+      Float h,
       Pointer<Uint32> pixels,
       Int32 imgW,
       Int32 imgH,
     );
 typedef EngineAddImageDart =
     int Function(
-      int x,
-      int y,
-      int w,
-      int h,
+      double x,
+      double y,
+      double w,
+      double h,
       Pointer<Uint32> pixels,
       int imgW,
       int imgH,
@@ -83,13 +97,15 @@ typedef EngineImportPptxDart = void Function(Pointer<Utf8> filepath);
 typedef EnginePickC = Int32 Function(Int32 x, Int32 y);
 typedef EnginePickDart = int Function(int x, int y);
 
-typedef EngineMoveObjectC = Void Function(Int32 id, Int32 dx, Int32 dy);
-typedef EngineMoveObjectDart = void Function(int id, int dx, int dy);
+typedef EngineMoveObjectC = Void Function(Int32 id, Float dx, Float dy);
+typedef EngineMoveObjectDart = void Function(int id, double dx, double dy);
+typedef EngineMoveSelectionC = Void Function(Float dx, Float dy);
+typedef EngineMoveSelectionDart = void Function(double dx, double dy);
 
 typedef EngineSetObjectRectC =
-    Void Function(Int32 id, Int32 x, Int32 y, Int32 w, Int32 h);
+    Void Function(Int32 id, Float x, Float y, Float w, Float h);
 typedef EngineSetObjectRectDart =
-    void Function(int id, int x, int y, int w, int h);
+    void Function(int id, double x, double y, double w, double h);
 
 typedef EngineSetObjectColorC = Void Function(Int32 id, Uint32 color);
 typedef EngineSetObjectColorDart = void Function(int id, int color);
@@ -101,8 +117,14 @@ typedef EngineGetSelectedIdDart = int Function();
 typedef EngineRemoveObjectC = Void Function(Int32 id);
 typedef EngineRemoveObjectDart = void Function(int id);
 
-typedef EngineSelectObjectC = Void Function(Int32 id);
-typedef EngineSelectObjectDart = void Function(int id);
+typedef EngineSelectObjectC = Void Function(Int32 id, Bool addToSelection);
+typedef EngineSelectObjectDart = void Function(int id, bool addToSelection);
+typedef EngineClearSelectionC = Void Function();
+typedef EngineClearSelectionDart = void Function();
+typedef EngineGetSelectedCountC = Int32 Function();
+typedef EngineGetSelectedCountDart = int Function();
+typedef EngineGetSelectedIdAtC = Int32 Function(Int32 index);
+typedef EngineGetSelectedIdAtDart = int Function(int index);
 
 typedef EnginePickHandleC = Int32 Function(Int32 x, Int32 y);
 typedef EnginePickHandleDart = int Function(int x, int y);
@@ -113,18 +135,18 @@ typedef EngineGetObjectUidDart = int Function(int index);
 typedef EngineGetObjectBoundsC =
     Void Function(
       Int32 id,
-      Pointer<Int32> x,
-      Pointer<Int32> y,
-      Pointer<Int32> w,
-      Pointer<Int32> h,
+      Pointer<Float> x,
+      Pointer<Float> y,
+      Pointer<Float> w,
+      Pointer<Float> h,
     );
 typedef EngineGetObjectBoundsDart =
     void Function(
       int id,
-      Pointer<Int32> x,
-      Pointer<Int32> y,
-      Pointer<Int32> w,
-      Pointer<Int32> h,
+      Pointer<Float> x,
+      Pointer<Float> y,
+      Pointer<Float> w,
+      Pointer<Float> h,
     );
 
 typedef EngineGetObjectColorC = Uint32 Function(Int32 id);
@@ -168,11 +190,15 @@ class NativeApi {
   static late EnginePickDart _enginePick;
   static late EnginePickHandleDart _enginePickHandle;
   static late EngineMoveObjectDart _engineMoveObject;
+  static late EngineMoveSelectionDart _engineMoveSelection;
   static late EngineSetObjectRectDart _engineSetObjectRect;
   static late EngineSetObjectColorDart _engineSetObjectColor;
   static late EngineGetSelectedIdDart _engineGetSelectedId;
   static late EngineRemoveObjectDart _engineRemoveObject;
   static late EngineSelectObjectDart _engineSelectObject;
+  static late EngineClearSelectionDart _engineClearSelection;
+  static late EngineGetSelectedCountDart _engineGetSelectedCount;
+  static late EngineGetSelectedIdAtDart _engineGetSelectedIdAt;
   static late EngineGetObjectUidDart _engineGetObjectUid;
   static late EngineGetObjectBoundsDart _engineGetObjectBounds;
   static late EngineGetObjectColorDart _engineGetObjectColor;
@@ -189,7 +215,6 @@ class NativeApi {
 
     try {
       if (Platform.isWindows) {
-        // Standard loading since we aren't using Aspose dependencies
         _lib = DynamicLibrary.open('engine.dll');
       } else {
         throw UnsupportedError('Unsupported platform');
@@ -238,6 +263,10 @@ class NativeApi {
           .lookupFunction<EngineMoveObjectC, EngineMoveObjectDart>(
             'engine_move_object',
           );
+      _engineMoveSelection = _lib
+          .lookupFunction<EngineMoveSelectionC, EngineMoveSelectionDart>(
+            'engine_move_selection',
+          );
       _engineSetObjectRect = _lib
           .lookupFunction<EngineSetObjectRectC, EngineSetObjectRectDart>(
             'engine_set_object_rect',
@@ -257,6 +286,18 @@ class NativeApi {
       _engineSelectObject = _lib
           .lookupFunction<EngineSelectObjectC, EngineSelectObjectDart>(
             'engine_select_object',
+          );
+      _engineClearSelection = _lib
+          .lookupFunction<EngineClearSelectionC, EngineClearSelectionDart>(
+            'engine_clear_selection',
+          );
+      _engineGetSelectedCount = _lib
+          .lookupFunction<EngineGetSelectedCountC, EngineGetSelectedCountDart>(
+            'engine_get_selected_count',
+          );
+      _engineGetSelectedIdAt = _lib
+          .lookupFunction<EngineGetSelectedIdAtC, EngineGetSelectedIdAtDart>(
+            'engine_get_selected_id_at',
           );
       _engineGetObjectUid = _lib
           .lookupFunction<EngineGetObjectUidC, EngineGetObjectUidDart>(
@@ -321,29 +362,29 @@ class NativeApi {
     _engineRender(buffer, width, height);
   }
 
-  static int addRect(int x, int y, int w, int h, int color) {
+  static int addRect(double x, double y, double w, double h, int color) {
     if (!_initialized) initialize();
     return _engineAddRect(x, y, w, h, color);
   }
 
-  static int addEllipse(int x, int y, int w, int h, int color) {
+  static int addEllipse(double x, double y, double w, double h, int color) {
     if (!_initialized) initialize();
     return _engineAddEllipse(x, y, w, h, color);
   }
 
   static int addLine(
-    int x1,
-    int y1,
-    int x2,
-    int y2,
+    double x1,
+    double y1,
+    double x2,
+    double y2,
     int color, {
-    int thickness = 2,
+    double thickness = 2.0,
   }) {
     if (!_initialized) initialize();
     return _engineAddLine(x1, y1, x2, y2, color, thickness);
   }
 
-  static int addText(int x, int y, String text, int color, double size) {
+  static int addText(double x, double y, String text, int color, double size) {
     if (!_initialized) initialize();
     final textPtr = text.toNativeUtf8();
     final id = _engineAddText(x, y, textPtr, color, size);
@@ -352,10 +393,10 @@ class NativeApi {
   }
 
   static int addImage(
-    int x,
-    int y,
-    int w,
-    int h,
+    double x,
+    double y,
+    double w,
+    double h,
     Uint32List pixels,
     int imgW,
     int imgH,
@@ -394,12 +435,17 @@ class NativeApi {
     return _enginePickHandle(x, y);
   }
 
-  static void moveObject(int id, int dx, int dy) {
+  static void moveObject(int id, double dx, double dy) {
     if (!_initialized) initialize();
     _engineMoveObject(id, dx, dy);
   }
 
-  static void setObjectRect(int id, int x, int y, int w, int h) {
+  static void moveSelection(double dx, double dy) {
+    if (!_initialized) initialize();
+    _engineMoveSelection(dx, dy);
+  }
+
+  static void setObjectRect(int id, double x, double y, double w, double h) {
     if (!_initialized) initialize();
     _engineSetObjectRect(id, x, y, w, h);
   }
@@ -419,9 +465,24 @@ class NativeApi {
     _engineRemoveObject(id);
   }
 
-  static void selectObject(int id) {
+  static void selectObject(int id, {bool addToSelection = false}) {
     if (!_initialized) initialize();
-    _engineSelectObject(id);
+    _engineSelectObject(id, addToSelection);
+  }
+
+  static void clearSelection() {
+    if (!_initialized) initialize();
+    _engineClearSelection();
+  }
+
+  static int getSelectedCount() {
+    if (!_initialized) initialize();
+    return _engineGetSelectedCount();
+  }
+
+  static int getSelectedIdAt(int index) {
+    if (!_initialized) initialize();
+    return _engineGetSelectedIdAt(index);
   }
 
   static int getObjectUid(int index) {
@@ -431,10 +492,10 @@ class NativeApi {
 
   static void getObjectBounds(
     int id,
-    Pointer<Int32> x,
-    Pointer<Int32> y,
-    Pointer<Int32> w,
-    Pointer<Int32> h,
+    Pointer<Float> x,
+    Pointer<Float> y,
+    Pointer<Float> w,
+    Pointer<Float> h,
   ) {
     if (!_initialized) initialize();
     _engineGetObjectBounds(id, x, y, w, h);
