@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\Development\Flutter\karrolle\native\build\CMakeFiles\532a31edfd63e3a40b7cc935107e783a\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{0760C999-69F1-39B8-BF03-3A2B6E864CB2}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
