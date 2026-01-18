@@ -1,28 +1,34 @@
 #include "engine.h"
+#include "scene_graph.hpp"
 #include <iostream>
-#include <vector>
 
-// Simple global state for prototype
-int g_width = 800;
-int g_height = 600;
+// --- Global Engine State ---
+static Scene g_scene;
 
-void engine_init(int width, int height) {
-    g_width = width;
-    g_height = height;
-    std::cout << "[C++] Engine Initialized: " << width << "x" << height << std::endl;
+// --- Exported Functions ---
+
+void engine_init(int32_t width, int32_t height) {
+    g_scene.clear();
+    std::cout << "[C++] Engine Initialized: " << width << "x" << height << " with Scene Graph" << std::endl;
 }
 
-void engine_render(uint32_t* buffer, int width, int height) {
-    // Fill with a simple pattern (Red/Blue gradient)
-    for (int y = 0; y < height; ++y) {
-        for (int x = 0; x < width; ++x) {
-            uint8_t r = (x * 255) / width;
-            uint8_t g = (y * 255) / height;
-            uint8_t b = 128;
-            uint8_t a = 255;
-            
-            // Format BGRA (common for Flutter/Skia)
-            buffer[y * width + x] = (a << 24) | (r << 16) | (g << 8) | b;
-        }
-    }
+void engine_render(uint32_t* buffer, int32_t width, int32_t height) {
+    g_scene.render(buffer, width, height);
 }
+
+void engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) {
+    // Create a new RectangleObject via shared_ptr
+    // ID is currently managed by vector index logic in Scene::add, so passing 0 is placeholder
+    auto rect = std::make_shared<RectangleObject>(0, x, y, w, h, color);
+    g_scene.add(rect);
+    std::cout << "[C++] Rect Object added at " << x << "," << y << std::endl;
+}
+
+int32_t engine_pick(int32_t x, int32_t y) {
+    return g_scene.pick(x, y);
+}
+
+void engine_move_object(int32_t id, int32_t dx, int32_t dy) {
+    g_scene.moveObject(id, dx, dy);
+}
+

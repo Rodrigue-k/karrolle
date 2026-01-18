@@ -82,6 +82,8 @@ class _EngineViewState extends State<EngineView> {
     super.dispose();
   }
 
+  int _draggedObjectId = -1;
+
   @override
   Widget build(BuildContext context) {
     if (_image == null) {
@@ -89,6 +91,49 @@ class _EngineViewState extends State<EngineView> {
         child: Text("Loading C++ Engine... (Compile DLL first!)"),
       );
     }
-    return RawImage(image: _image);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return GestureDetector(
+          onPanStart: (details) {
+            final renderBox = context.findRenderObject() as RenderBox;
+            final localPos = renderBox.globalToLocal(details.globalPosition);
+
+            // Calculate scale ratios
+            final double scaleX = _width / constraints.maxWidth;
+            final double scaleY = _height / constraints.maxHeight;
+
+            final int engineX = (localPos.dx * scaleX).toInt();
+            final int engineY = (localPos.dy * scaleY).toInt();
+
+            final id = NativeApi.pick(engineX, engineY);
+            if (id != -1) {
+              setState(() {
+                _draggedObjectId = id;
+              });
+              AppLog.d('Picked object $id');
+            }
+          },
+          onPanUpdate: (details) {
+            if (_draggedObjectId != -1) {
+              final double scaleX = _width / constraints.maxWidth;
+              // final double scaleY = _height / constraints.maxHeight; // Not strictly needed if Aspect Ratio is locked
+
+              final int dx = (details.delta.dx * scaleX).toInt();
+              final int dy = (details.delta.dy * scaleX)
+                  .toInt(); // Use scaleX for uniform scaling if locked
+
+              NativeApi.moveObject(_draggedObjectId, dx, dy);
+            }
+          },
+          onPanEnd: (details) {
+            _draggedObjectId = -1;
+          },
+          child: RawImage(
+            image: _image,
+            fit: BoxFit.contain,
+          ), // Use contain to respect aspect ratio
+        );
+      },
+    );
   }
 }

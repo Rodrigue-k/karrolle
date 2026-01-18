@@ -107,15 +107,16 @@ install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
 
-# === Karrolle Engine DLL Copy ===
-# Automates copying the C++ engine DLL to the runtime directory.
-# Assuming the user builds the native engine in ${CMAKE_SOURCE_DIR}/../native/build/Release
-set(KARROLLE_ENGINE_DLL_SRC "${CMAKE_SOURCE_DIR}/../native/build/Release/karrolle_engine.dll")
-if(EXISTS "${KARROLLE_ENGINE_DLL_SRC}")
-  install(FILES "${KARROLLE_ENGINE_DLL_SRC}"
-    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
-    COMPONENT Runtime)
-  message(STATUS "Configured to copy karrolle_engine.dll from ${KARROLLE_ENGINE_DLL_SRC}")
-else()
-  message(WARNING "karrolle_engine.dll not found at ${KARROLLE_ENGINE_DLL_SRC}. Please compile the C++ engine first.")
-endif()
+# === Karrolle Engine Integration ===
+# Include the native engine project directly into the build pipeline.
+# This ensures the C++ engine is compiled automatically with 'flutter run'.
+add_subdirectory("${CMAKE_SOURCE_DIR}/../native" "${CMAKE_CURRENT_BINARY_DIR}/native_engine")
+
+# Link the engine library to the main runner if needed (optional if using FFI dynamically, 
+# but useful to force build dependency). 
+# Note: Since we use DynamicLibrary.open, we just need the DLL to be present.
+
+# Install the compiled DLL next to the executable
+install(TARGETS karrolle_engine
+  RUNTIME DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:karrolle/bridge/native_api.dart';
 
 class StudioLeftPanel extends StatelessWidget {
   const StudioLeftPanel({super.key});
@@ -22,7 +23,19 @@ class StudioLeftPanel extends StatelessWidget {
               children: [
                 _buildToolIcon(Icons.mouse_rounded, isActive: true),
                 _buildToolIcon(Icons.text_fields),
-                _buildToolIcon(Icons.crop_square),
+                _buildToolIcon(
+                  Icons.crop_square,
+                  onTap: () {
+                    // TEST: Create Red Rectangle via C++ Engine
+                    NativeApi.addRect(
+                      200,
+                      150,
+                      300,
+                      200,
+                      0xFFFF0000,
+                    ); // ARGB Red
+                  },
+                ),
                 _buildToolIcon(Icons.image_outlined),
               ],
             ),
@@ -58,20 +71,28 @@ class StudioLeftPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildToolIcon(IconData icon, {bool isActive = false}) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: isActive
-          ? BoxDecoration(
-              color: Colors.blueAccent.withAlpha(51),
-              borderRadius: BorderRadius.circular(4),
-            )
-          : null,
-      child: Icon(
-        icon,
-        size: 16,
-        color: isActive ? Colors.blueAccent : Colors.white60,
+  Widget _buildToolIcon(
+    IconData icon, {
+    bool isActive = false,
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(4),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: isActive
+            ? BoxDecoration(
+                color: Colors.blueAccent.withAlpha(51),
+                borderRadius: BorderRadius.circular(4),
+              )
+            : null,
+        child: Icon(
+          icon,
+          size: 16,
+          color: isActive ? Colors.blueAccent : Colors.white60,
+        ),
       ),
     );
   }
@@ -102,7 +123,11 @@ class StudioLeftPanel extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.visibility_outlined, size: 14, color: Colors.white30),
+          const Icon(
+            Icons.visibility_outlined,
+            size: 14,
+            color: Colors.white30,
+          ),
           const SizedBox(width: 8),
           Icon(icon, size: 14, color: Colors.blueAccent),
           const SizedBox(width: 8),
