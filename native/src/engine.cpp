@@ -1,6 +1,9 @@
 #define STB_TRUETYPE_IMPLEMENTATION
-#include "scene_graph.hpp"
 #include "engine.h"
+#include "core/scene.hpp"
+#include "objects/rect_object.hpp"
+#include "objects/text_object.hpp"
+#include "objects/image_object.hpp"
 #include <memory>
 
 Scene g_scene;

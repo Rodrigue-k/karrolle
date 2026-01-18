@@ -9,6 +9,7 @@ include_directories(include)
 
 add_library(karrolle_engine SHARED
     src/engine.cpp
+    src/core/scene.cpp
 )
 
 set_target_properties(karrolle_engine PROPERTIES

@@ -114,14 +114,52 @@ class _EngineViewState extends State<EngineView>
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Pre-calculate scale factors
-        final double scaleX = _width / constraints.maxWidth;
-        final double scaleY = _height / constraints.maxHeight;
+        // Correct BoxFit.contain logic
+        final double aspectEngine = _width / _height;
+        final double aspectCanvas =
+            constraints.maxWidth / constraints.maxHeight;
+
+        double renderW, renderH, offsetX, offsetY;
+
+        if (aspectCanvas > aspectEngine) {
+          // Canvas is wider than Engine (Pillarbox)
+          renderH = constraints.maxHeight;
+          renderW = renderH * aspectEngine;
+          offsetX = (constraints.maxWidth - renderW) / 2;
+          offsetY = 0;
+        } else {
+          // Canvas is taller than Engine (Letterbox)
+          renderW = constraints.maxWidth;
+          renderH = renderW / aspectEngine;
+          offsetX = 0;
+          offsetY = (constraints.maxHeight - renderH) / 2;
+        }
+
+        final double scale =
+            _width / renderW; // Map render pixels -> Engine pixels
 
         return Listener(
           onPointerDown: (event) {
-            final int cursorX = (event.localPosition.dx * scaleX).toInt();
-            final int cursorY = (event.localPosition.dy * scaleY).toInt();
+            // Transform local pos -> render pos
+            final double localX = event.localPosition.dx - offsetX;
+            final double localY = event.localPosition.dy - offsetY;
+
+            // Map to engine space
+            final int cursorX = (localX * scale).toInt();
+            final int cursorY = (localY * scale).toInt();
+
+            // Debug info
+            // AppLog.d("Ptr: ${event.localPosition} -> Local: $localX,$localY -> Eng: $cursorX,$cursorY");
+
+            // Ignore clicks outside the engine area
+            if (cursorX < 0 ||
+                cursorX >= _width ||
+                cursorY < 0 ||
+                cursorY >= _height) {
+              StudioController()
+                  .refreshSelection(); // Deselect if clicking outside?
+              return;
+            }
 
             // 1. Check Handle Picking First (If something is already selected)
             int handleId = NativeApi.pickHandle(cursorX, cursorY);
@@ -185,8 +223,10 @@ class _EngineViewState extends State<EngineView>
           onPointerMove: (event) {
             if (_draggedObjectId == -1) return;
 
-            final int cursorX = (event.localPosition.dx * scaleX).toInt();
-            final int cursorY = (event.localPosition.dy * scaleY).toInt();
+            final double localX = event.localPosition.dx - offsetX;
+            final double localY = event.localPosition.dy - offsetY;
+            final int cursorX = (localX * scale).toInt();
+            final int cursorY = (localY * scale).toInt();
 
             if (_draggedHandleId == -1) {
               // MOVE
