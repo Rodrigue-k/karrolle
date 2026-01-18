@@ -37,6 +37,26 @@ typedef EngineAddTextC =
 typedef EngineAddTextDart =
     void Function(int x, int y, Pointer<Utf8> text, int color, double size);
 
+typedef EngineGetSelectedIdC = Int32 Function();
+typedef EngineGetSelectedIdDart = int Function();
+
+typedef EngineGetObjectBoundsC =
+    Void Function(
+      Int32 id,
+      Pointer<Int32> x,
+      Pointer<Int32> y,
+      Pointer<Int32> w,
+      Pointer<Int32> h,
+    );
+typedef EngineGetObjectBoundsDart =
+    void Function(
+      int id,
+      Pointer<Int32> x,
+      Pointer<Int32> y,
+      Pointer<Int32> w,
+      Pointer<Int32> h,
+    );
+
 class NativeApi {
   static late DynamicLibrary _lib;
   static late EngineInitDart _engineInit;
@@ -46,6 +66,9 @@ class NativeApi {
   static late EngineMoveObjectDart _engineMoveObject;
   static late EngineLoadFontDart _engineLoadFont;
   static late EngineAddTextDart _engineAddText;
+
+  static late EngineGetSelectedIdDart _engineGetSelectedId;
+  static late EngineGetObjectBoundsDart _engineGetObjectBounds;
 
   static bool _initialized = false;
 
@@ -86,6 +109,15 @@ class NativeApi {
       _engineAddText = _lib.lookupFunction<EngineAddTextC, EngineAddTextDart>(
         'engine_add_text',
       );
+
+      _engineGetSelectedId = _lib
+          .lookupFunction<EngineGetSelectedIdC, EngineGetSelectedIdDart>(
+            'engine_get_selected_id',
+          );
+      _engineGetObjectBounds = _lib
+          .lookupFunction<EngineGetObjectBoundsC, EngineGetObjectBoundsDart>(
+            'engine_get_object_bounds',
+          );
 
       _initialized = true;
       AppLog.i('Native API initialized successfully');
@@ -135,5 +167,21 @@ class NativeApi {
     final ptr = text.toNativeUtf8();
     _engineAddText(x, y, ptr, color, size);
     calloc.free(ptr);
+  }
+
+  static int getSelectedId() {
+    if (!_initialized) initialize();
+    return _engineGetSelectedId();
+  }
+
+  static void getObjectBounds(
+    int id,
+    Pointer<Int32> x,
+    Pointer<Int32> y,
+    Pointer<Int32> w,
+    Pointer<Int32> h,
+  ) {
+    if (!_initialized) initialize();
+    _engineGetObjectBounds(id, x, y, w, h);
   }
 }

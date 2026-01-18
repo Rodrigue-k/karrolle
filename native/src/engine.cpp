@@ -44,3 +44,17 @@ void engine_move_object(int32_t id, int32_t dx, int32_t dy) {
     g_scene.moveObject(id, dx, dy);
 }
 
+int32_t engine_get_selected_id() {
+    return g_scene.selectedId;
+}
+
+void engine_get_object_bounds(int32_t id, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
+    if (id >= 0 && id < (int)g_scene.objects.size()) {
+        auto obj = g_scene.objects[id];
+        if (x) *x = obj->x;
+        if (y) *y = obj->y;
+        if (w) *w = obj->w;
+        if (h) *h = obj->h;
+    }
+}
+

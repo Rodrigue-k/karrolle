@@ -192,13 +192,50 @@ public:
         objects.push_back(obj);
     }
 
+    int selectedId = -1; // -1 means none
+
     void render(uint32_t* buffer, int width, int height) {
-        // 1. Clear Background (Dark Grey)
+        // 1. Clear Background
         std::fill_n(buffer, width * height, 0xFF252526);
 
         // 2. Draw all objects
         for (const auto& obj : objects) {
             obj->draw(buffer, width, height);
+        }
+
+        // 3. Draw Selection Outline
+        if (selectedId >= 0 && selectedId < (int)objects.size()) {
+            drawSelectionOutline(buffer, width, height, objects[selectedId].get());
+        }
+    }
+
+    void drawSelectionOutline(uint32_t* buffer, int w, int h, Object* obj) {
+        // Draw Cyan Box (0xFF00FFFF)
+        uint32_t color = 0xFF00FFFF;
+        int x = obj->x - 2;
+        int y = obj->y - 2;
+        int bw = obj->w + 4;
+        int bh = obj->h + 4;
+
+        // Horiz top
+        for(int i=0; i<bw; i++) {
+            int px = x + i; int py = y;
+            if(px>=0 && px<w && py>=0 && py<h) buffer[py*w+px] = color;
+        }
+        // Horiz bottom
+        for(int i=0; i<bw; i++) {
+            int px = x + i; int py = y + bh;
+            if(px>=0 && px<w && py>=0 && py<h) buffer[py*w+px] = color;
+        }
+        // Vert left
+        for(int i=0; i<bh; i++) {
+            int px = x; int py = y + i;
+            if(px>=0 && px<w && py>=0 && py<h) buffer[py*w+px] = color;
+        }
+        // Vert right
+        for(int i=0; i<bh; i++) {
+            int px = x + bw; int py = y + i;
+            if(px>=0 && px<w && py>=0 && py<h) buffer[py*w+px] = color;
         }
     }
 
@@ -207,9 +244,13 @@ public:
         // Iterate backwards (top to bottom)
         for (int i = (int)objects.size() - 1; i >= 0; --i) {
             if (objects[i]->contains(px, py)) {
+                // Set as selected!
+                selectedId = i;
                 return i;
             }
         }
+        // Click on void deselects? Yes
+        selectedId = -1;
         return -1;
     }
 
