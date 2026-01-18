@@ -5,6 +5,7 @@ import 'dart:ui' as ui;
 import 'package:ffi/ffi.dart';
 import 'package:flutter/material.dart';
 import 'package:karrolle/core/logger/app_logger.dart';
+import 'package:karrolle/features/studio/logic/studio_controller.dart';
 import '../../../bridge/native_api.dart';
 
 class EngineView extends StatefulWidget {
@@ -129,6 +130,8 @@ class _EngineViewState extends State<EngineView> {
               });
               AppLog.d('Picked object $id');
             }
+            // Always refresh controller even if desselcted (id == -1)
+            StudioController().refreshSelection();
           },
           onPanUpdate: (details) {
             if (_draggedObjectId != -1) {
@@ -140,10 +143,13 @@ class _EngineViewState extends State<EngineView> {
                   .toInt(); // Use scaleX for uniform scaling if locked
 
               NativeApi.moveObject(_draggedObjectId, dx, dy);
+              // Update UI values in real-time
+              StudioController().refreshSelection();
             }
           },
           onPanEnd: (details) {
             _draggedObjectId = -1;
+            StudioController().refreshSelection();
           },
           child: RawImage(
             image: _image,

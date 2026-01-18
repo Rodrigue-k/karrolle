@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:karrolle/features/studio/logic/studio_controller.dart';
+
 class StudioPropertiesPanel extends StatelessWidget {
   const StudioPropertiesPanel({super.key});
 
@@ -12,55 +14,58 @@ class StudioPropertiesPanel extends StatelessWidget {
         border: Border(left: BorderSide(color: Color(0xFF333333))),
       ),
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('TRANSFORM'),
-          const SizedBox(height: 12),
-          Row(
+      child: ValueListenableBuilder<SelectionState?>(
+        valueListenable: StudioController().selectionNotifier,
+        builder: (context, selection, child) {
+          if (selection == null) {
+            return const Center(
+              child: Text(
+                "No Selection",
+                style: TextStyle(color: Colors.white38),
+              ),
+            );
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildPropertyField('X', '102'),
-              const SizedBox(width: 8),
-              _buildPropertyField('Y', '452'),
+              _buildSectionTitle('TRANSFORM (ID: ${selection.id})'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _buildPropertyField('X', '${selection.x}'),
+                  const SizedBox(width: 8),
+                  _buildPropertyField('Y', '${selection.y}'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _buildPropertyField('W', '${selection.w}'),
+                  const SizedBox(width: 8),
+                  _buildPropertyField('H', '${selection.h}'),
+                ],
+              ),
+              const SizedBox(height: 8),
+              _buildPropertyField('Rotation', '0°'),
+
+              const SizedBox(height: 24),
+              const Divider(color: Color(0xFF333333)),
+              const SizedBox(height: 24),
+
+              _buildSectionTitle('APPEARANCE'),
+              const SizedBox(height: 12),
+              // Dummy color for now (reading color from C++ requires extending ObjectInfo struct)
+              _buildColorRow('Fill', const Color(0xFF007AFF)),
+
+              const SizedBox(height: 24),
+              const Divider(color: Color(0xFF333333)),
+
+              // Only show Typography for Text objects (Need 'type' info from C++)
+              // For now, static placeholder
             ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildPropertyField('W', '400'),
-              const SizedBox(width: 8),
-              _buildPropertyField('H', '200'),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _buildPropertyField('Rotation', '0°'),
-
-          const SizedBox(height: 24),
-          const Divider(color: Color(0xFF333333)),
-          const SizedBox(height: 24),
-
-          _buildSectionTitle('APPEARANCE'),
-          const SizedBox(height: 12),
-          _buildColorRow('Fill', const Color(0xFF007AFF)),
-          const SizedBox(height: 8),
-          _buildColorRow('Stroke', null),
-
-          const SizedBox(height: 24),
-          const Divider(color: Color(0xFF333333)),
-          const SizedBox(height: 24),
-
-          _buildSectionTitle('TYPOGRAPHY'),
-          const SizedBox(height: 12),
-          _buildDropdown('Font', 'Inter'),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              _buildDropdown('Weight', 'Bold'),
-              const SizedBox(width: 8),
-              _buildPropertyField('Size', '24'),
-            ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -134,35 +139,6 @@ class StudioPropertiesPanel extends StatelessWidget {
             style: const TextStyle(color: Colors.white38, fontSize: 10),
           ),
       ],
-    );
-  }
-
-  Widget _buildDropdown(String label, String value) {
-    return Expanded(
-      child: Container(
-        height: 28,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        alignment: Alignment.centerLeft,
-        decoration: BoxDecoration(
-          color: const Color(0xFF2C2C2C),
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              value,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
-            ),
-            const Icon(
-              Icons.keyboard_arrow_down,
-              size: 14,
-              color: Colors.white30,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }
