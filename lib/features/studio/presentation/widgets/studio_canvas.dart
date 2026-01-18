@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:karrolle/features/engine/presentation/engine_view.dart';
 
 /// Canvas area with zoom/pan, checkered background, and document display
-class StudioCanvas extends StatelessWidget {
+class StudioCanvas extends StatefulWidget {
   final TransformationController transformController;
   final double documentWidth;
   final double documentHeight;
@@ -15,6 +15,22 @@ class StudioCanvas extends StatelessWidget {
     required this.documentHeight,
     required this.documentBackground,
   });
+
+  @override
+  State<StudioCanvas> createState() => _StudioCanvasState();
+}
+
+class _StudioCanvasState extends State<StudioCanvas> {
+  // Track if we're currently dragging an object
+  bool _isDraggingObject = false;
+
+  void _onDragStart() {
+    setState(() => _isDraggingObject = true);
+  }
+
+  void _onDragEnd() {
+    setState(() => _isDraggingObject = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,22 +46,22 @@ class StudioCanvas extends StatelessWidget {
               ),
 
               // Interactive canvas with zoom/pan
+              // Only allow pan when NOT dragging an object
               InteractiveViewer(
-                transformationController: transformController,
+                transformationController: widget.transformController,
                 minScale: 0.1,
                 maxScale: 5.0,
+                // Disable pan when dragging an object
+                panEnabled: !_isDraggingObject,
+                scaleEnabled: !_isDraggingObject,
                 boundaryMargin: EdgeInsets.all(
-                  (documentWidth > documentHeight
-                          ? documentWidth
-                          : documentHeight) *
+                  (widget.documentWidth > widget.documentHeight
+                          ? widget.documentWidth
+                          : widget.documentHeight) *
                       2,
                 ),
                 child: Center(child: _buildDocument()),
               ),
-
-              // Rulers (optional - can be toggled)
-              // _buildHorizontalRuler(constraints.maxWidth),
-              // _buildVerticalRuler(constraints.maxHeight),
             ],
           );
         },
@@ -55,10 +71,10 @@ class StudioCanvas extends StatelessWidget {
 
   Widget _buildDocument() {
     return Container(
-      width: documentWidth,
-      height: documentHeight,
+      width: widget.documentWidth,
+      height: widget.documentHeight,
       decoration: BoxDecoration(
-        color: documentBackground,
+        color: widget.documentBackground,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withAlpha(128),
@@ -74,8 +90,10 @@ class StudioCanvas extends StatelessWidget {
       ),
       child: ClipRect(
         child: EngineView(
-          width: documentWidth.toInt(),
-          height: documentHeight.toInt(),
+          width: widget.documentWidth.toInt(),
+          height: widget.documentHeight.toInt(),
+          onDragStart: _onDragStart,
+          onDragEnd: _onDragEnd,
         ),
       ),
     );

@@ -4,12 +4,15 @@
 #include "objects/rect_object.hpp"
 #include "objects/text_object.hpp"
 #include "objects/image_object.hpp"
+#include "objects/ellipse_object.hpp"
+#include "objects/line_object.hpp"
 #include <memory>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <sstream>
 
 // Native dependencies
 #include "zip.h"
@@ -26,6 +29,64 @@ float emuToPixel(long long emu) {
     return (float)emu / 9525.0f;
 }
 
+// Parse color from PPTX XML (handles srgbClr, schemeClr with basic mapping)
+uint32_t parseColor(XMLElement* parent, uint32_t defaultColor = 0xFFCCCCCC) {
+    if (!parent) return defaultColor;
+    
+    // Direct RGB color
+    XMLElement* srgbClr = parent->FirstChildElement("a:srgbClr");
+    if (srgbClr) {
+        const char* val = srgbClr->Attribute("val");
+        if (val) {
+            uint32_t rgb = (uint32_t)strtol(val, NULL, 16);
+            return 0xFF000000 | rgb;
+        }
+    }
+    
+    // Scheme color (basic mapping)
+    XMLElement* schemeClr = parent->FirstChildElement("a:schemeClr");
+    if (schemeClr) {
+        const char* val = schemeClr->Attribute("val");
+        if (val) {
+            std::string scheme = val;
+            // Basic theme color mapping
+            if (scheme == "tx1" || scheme == "dk1") return 0xFF000000;
+            if (scheme == "tx2" || scheme == "dk2") return 0xFF444444;
+            if (scheme == "bg1" || scheme == "lt1") return 0xFFFFFFFF;
+            if (scheme == "bg2" || scheme == "lt2") return 0xFFEEEEEE;
+            if (scheme == "accent1") return 0xFF4472C4;
+            if (scheme == "accent2") return 0xFFED7D31;
+            if (scheme == "accent3") return 0xFFA5A5A5;
+            if (scheme == "accent4") return 0xFFFFC000;
+            if (scheme == "accent5") return 0xFF5B9BD5;
+            if (scheme == "accent6") return 0xFF70AD47;
+        }
+    }
+    
+    return defaultColor;
+}
+
+// Detect shape type from preset geometry
+std::string detectShapeType(XMLElement* spPr) {
+    if (!spPr) return "rect";
+    
+    XMLElement* prstGeom = spPr->FirstChildElement("a:prstGeom");
+    if (prstGeom) {
+        const char* prst = prstGeom->Attribute("prst");
+        if (prst) {
+            std::string preset = prst;
+            if (preset == "ellipse" || preset == "oval") return "ellipse";
+            if (preset == "line") return "line";
+            if (preset == "roundRect") return "roundRect";
+            if (preset == "triangle" || preset == "rtTriangle") return "triangle";
+            // More presets can be added
+            return preset;
+        }
+    }
+    
+    return "rect"; // Default
+}
+
 void engine_init(int32_t, int32_t) {
     g_scene.clear();
 }
@@ -37,144 +98,174 @@ void engine_import_pptx(const char* filepath) {
         return;
     }
 
-    // For now, let's just try to read Slide 1
-    const char* slidePath = "ppt/slides/slide1.xml";
-    if (zip_entry_open(zip, slidePath) < 0) {
-        printf("Error: Could not find %s in archive.\n", slidePath);
-        zip_close(zip);
-        return;
-    }
+    g_scene.clear();
 
-    void* pSlideData = NULL;
-    size_t uncompressed_size = 0;
-    // zip_entry_read allocates memory for us into pSlideData
-    if (zip_entry_read(zip, &pSlideData, &uncompressed_size) < 0) {
-        printf("Error: Could not read %s from archive.\n", slidePath);
+    // Find all slides
+    for (int slideNum = 1; slideNum <= 100; ++slideNum) {
+        std::ostringstream slidePath;
+        slidePath << "ppt/slides/slide" << slideNum << ".xml";
+        
+        if (zip_entry_open(zip, slidePath.str().c_str()) < 0) {
+            break; // No more slides
+        }
+
+        void* pSlideData = NULL;
+        size_t uncompressed_size = 0;
+        
+        if (zip_entry_read(zip, &pSlideData, &uncompressed_size) < 0) {
+            zip_entry_close(zip);
+            continue;
+        }
         zip_entry_close(zip);
-        zip_close(zip);
-        return;
-    }
-    zip_entry_close(zip);
 
-    // Parse XML
-    XMLDocument doc;
-    if (doc.Parse((const char*)pSlideData, uncompressed_size) == XML_SUCCESS) {
-        g_scene.clear();
-
-        // Navigate to <p:sld> -> <p:cSld> -> <p:spTree>
-        XMLElement* sld = doc.FirstChildElement("p:sld");
-        if (sld) {
-            XMLElement* cSld = sld->FirstChildElement("p:cSld");
-            if (cSld) {
-                XMLElement* spTree = cSld->FirstChildElement("p:spTree");
-                if (spTree) {
-                    // Iterate through children of spTree (shapes)
-                    for (XMLElement* element = spTree->FirstChildElement(); element; element = element->NextSiblingElement()) {
-                        const char* rawName = element->Name();
-                        std::string elName = rawName ? rawName : "";
-                        
-                        // Shape: <p:sp>
-                        if (elName == "p:sp") {
-                            // 1. Get Transform (Geometry + Position)
-                            XMLElement* spPr = element->FirstChildElement("p:spPr");
-                            float x = 0, y = 0, w = 100, h = 100;
-                            if (spPr) {
-                                XMLElement* xfrm = spPr->FirstChildElement("a:xfrm");
-                                if (xfrm) {
-                                    XMLElement* off = xfrm->FirstChildElement("a:off");
-                                    if (off) {
-                                        if (off->Attribute("x")) x = emuToPixel(atoll(off->Attribute("x")));
-                                        if (off->Attribute("y")) y = emuToPixel(atoll(off->Attribute("y")));
+        // Parse XML
+        XMLDocument doc;
+        if (doc.Parse((const char*)pSlideData, uncompressed_size) == XML_SUCCESS) {
+            XMLElement* sld = doc.FirstChildElement("p:sld");
+            if (sld) {
+                XMLElement* cSld = sld->FirstChildElement("p:cSld");
+                if (cSld) {
+                    XMLElement* spTree = cSld->FirstChildElement("p:spTree");
+                    if (spTree) {
+                        // Iterate through all shapes
+                        for (XMLElement* element = spTree->FirstChildElement(); 
+                             element; 
+                             element = element->NextSiblingElement()) {
+                            
+                            const char* rawName = element->Name();
+                            std::string elName = rawName ? rawName : "";
+                            
+                            // Shape: <p:sp>
+                            if (elName == "p:sp") {
+                                XMLElement* spPr = element->FirstChildElement("p:spPr");
+                                float x = 0, y = 0, w = 100, h = 100;
+                                
+                                if (spPr) {
+                                    XMLElement* xfrm = spPr->FirstChildElement("a:xfrm");
+                                    if (xfrm) {
+                                        XMLElement* off = xfrm->FirstChildElement("a:off");
+                                        if (off) {
+                                            if (off->Attribute("x")) x = emuToPixel(atoll(off->Attribute("x")));
+                                            if (off->Attribute("y")) y = emuToPixel(atoll(off->Attribute("y")));
+                                        }
+                                        XMLElement* ext = xfrm->FirstChildElement("a:ext");
+                                        if (ext) {
+                                            if (ext->Attribute("cx")) w = emuToPixel(atoll(ext->Attribute("cx")));
+                                            if (ext->Attribute("cy")) h = emuToPixel(atoll(ext->Attribute("cy")));
+                                        }
                                     }
-                                    XMLElement* ext = xfrm->FirstChildElement("a:ext");
-                                    if (ext) {
-                                        if (ext->Attribute("cx")) w = emuToPixel(atoll(ext->Attribute("cx")));
-                                        if (ext->Attribute("cy")) h = emuToPixel(atoll(ext->Attribute("cy")));
+                                }
+
+                                // Get color from solidFill
+                                uint32_t color = 0xFFCCCCCC;
+                                if (spPr) {
+                                    XMLElement* solidFill = spPr->FirstChildElement("a:solidFill");
+                                    if (solidFill) {
+                                        color = parseColor(solidFill);
+                                    }
+                                }
+
+                                // Detect shape type
+                                std::string shapeType = detectShapeType(spPr);
+                                int newId = (int)g_scene.objects.size() + 1;
+                                
+                                if (shapeType == "ellipse") {
+                                    g_scene.add(std::make_shared<EllipseObject>(
+                                        newId, (int)x, (int)y, (int)w, (int)h, color));
+                                } else if (shapeType == "line") {
+                                    g_scene.add(std::make_shared<LineObject>(
+                                        newId, (int)x, (int)y, (int)(x + w), (int)(y + h), color, 3));
+                                } else {
+                                    // Default to rectangle
+                                    g_scene.add(std::make_shared<RectangleObject>(
+                                        newId, (int)x, (int)y, (int)w, (int)h, color));
+                                }
+
+                                // Extract text if present
+                                XMLElement* txBody = element->FirstChildElement("p:txBody");
+                                if (txBody) {
+                                    std::string fullText = "";
+                                    float fontSize = 24.0f;
+                                    uint32_t textColor = 0xFF000000;
+                                    
+                                    for (XMLElement* p = txBody->FirstChildElement("a:p"); p; p = p->NextSiblingElement("a:p")) {
+                                        for (XMLElement* r = p->FirstChildElement("a:r"); r; r = r->NextSiblingElement("a:r")) {
+                                            // Get run properties for font size
+                                            XMLElement* rPr = r->FirstChildElement("a:rPr");
+                                            if (rPr) {
+                                                const char* sz = rPr->Attribute("sz");
+                                                if (sz) {
+                                                    fontSize = atof(sz) / 100.0f; // Size in hundredths of a point
+                                                }
+                                                // Get text color
+                                                XMLElement* solidFill = rPr->FirstChildElement("a:solidFill");
+                                                if (solidFill) {
+                                                    textColor = parseColor(solidFill, 0xFF000000);
+                                                }
+                                            }
+                                            
+                                            XMLElement* t = r->FirstChildElement("a:t");
+                                            if (t && t->GetText()) {
+                                                fullText += t->GetText();
+                                            }
+                                        }
+                                        fullText += "\n";
+                                    }
+
+                                    if (!fullText.empty()) {
+                                        if (fullText.back() == '\n') fullText.pop_back();
+
+                                        int textId = (int)g_scene.objects.size() + 1;
+                                        g_scene.add(std::make_shared<TextObject>(
+                                            textId,
+                                            (int)(x + 10), (int)(y + 10),
+                                            fullText.c_str(),
+                                            textColor,
+                                            fontSize > 8 ? fontSize : 24.0f
+                                        ));
                                     }
                                 }
                             }
-
-                            // 2. Get Color
-                            uint32_t color = 0xFFCCCCCC; // Default
-                            if (spPr) {
-                                XMLElement* solidFill = spPr->FirstChildElement("a:solidFill");
-                                if (solidFill) {
-                                    XMLElement* srgbClr = solidFill->FirstChildElement("a:srgbClr");
-                                    if (srgbClr) {
-                                        const char* val = srgbClr->Attribute("val");
-                                        if (val) {
-                                            uint32_t rgb = (uint32_t)strtol(val, NULL, 16);
-                                            // PPTX colors are often just RGB, need full alpha
-                                            color = 0xFF000000 | rgb;
+                            // Picture: <p:pic>
+                            else if (elName == "p:pic") {
+                                XMLElement* spPr = element->FirstChildElement("p:spPr");
+                                if (spPr) {
+                                    XMLElement* xfrm = spPr->FirstChildElement("a:xfrm");
+                                    if (xfrm) {
+                                        XMLElement* off = xfrm->FirstChildElement("a:off");
+                                        XMLElement* ext = xfrm->FirstChildElement("a:ext");
+                                        if (off && ext) {
+                                            float x = 0, y = 0, w = 100, h = 100;
+                                            if (off->Attribute("x")) x = emuToPixel(atoll(off->Attribute("x")));
+                                            if (off->Attribute("y")) y = emuToPixel(atoll(off->Attribute("y")));
+                                            if (ext->Attribute("cx")) w = emuToPixel(atoll(ext->Attribute("cx")));
+                                            if (ext->Attribute("cy")) h = emuToPixel(atoll(ext->Attribute("cy")));
+                                            
+                                            // TODO: Extract actual image from ppt/media folder
+                                            // For now, create a placeholder rectangle
+                                            int picId = (int)g_scene.objects.size() + 1;
+                                            g_scene.add(std::make_shared<RectangleObject>(
+                                                picId, (int)x, (int)y, (int)w, (int)h, 0xFF888888));
                                         }
                                     }
                                 }
                             }
-
-                            // Add the rectangle
-                            // Note: We use size() + 1 as ID generator logic is inside Scene but manual add needs ID
-                            int newId = (int)g_scene.objects.size() + 1;
-                            g_scene.add(std::make_shared<RectangleObject>(newId, (int)x, (int)y, (int)w, (int)h, color));
-
-                            // 3. Get Text
-                            XMLElement* txBody = element->FirstChildElement("p:txBody");
-                            if (txBody) {
-                                std::string fullText = "";
-                                for (XMLElement* p = txBody->FirstChildElement("a:p"); p; p = p->NextSiblingElement("a:p")) {
-                                    for (XMLElement* r = p->FirstChildElement("a:r"); r; r = r->NextSiblingElement("a:r")) {
-                                        XMLElement* t = r->FirstChildElement("a:t");
-                                        if (t && t->GetText()) {
-                                            fullText += t->GetText();
-                                        }
-                                    }
-                                    fullText += "\n";
-                                }
-
-                                if (!fullText.empty()) {
-                                    // Strip last newline
-                                    if (fullText.back() == '\n') fullText.pop_back();
-
-                                    int textId = (int)g_scene.objects.size() + 1;
-                                    g_scene.add(std::make_shared<TextObject>(
-                                        textId,
-                                        (int)(x + 5), (int)(y + 5),
-                                        fullText.c_str(),
-                                        0xFF000000,
-                                        24.0f
-                                    ));
-                                }
+                            // Group: <p:grpSp>
+                            else if (elName == "p:grpSp") {
+                                // TODO: Recursively parse group shapes
+                                // For now, skip groups
                             }
-                        }
-                        // Picture: <p:pic>
-                        else if (elName == "p:pic") {
-                            // Just a placeholder for now
-                             XMLElement* spPr = element->FirstChildElement("p:spPr");
-                             if (spPr) {
-                                 XMLElement* xfrm = spPr->FirstChildElement("a:xfrm");
-                                 if (xfrm) {
-                                     XMLElement* off = xfrm->FirstChildElement("a:off");
-                                     XMLElement* ext = xfrm->FirstChildElement("a:ext");
-                                     if (off && ext) {
-                                         float x = 0, y = 0, w = 100, h = 100;
-                                         if (off->Attribute("x")) x = emuToPixel(atoll(off->Attribute("x")));
-                                         if (off->Attribute("y")) y = emuToPixel(atoll(off->Attribute("y")));
-                                         if (ext->Attribute("cx")) w = emuToPixel(atoll(ext->Attribute("cx")));
-                                         if (ext->Attribute("cy")) h = emuToPixel(atoll(ext->Attribute("cy")));
-                                         
-                                         int picId = (int)g_scene.objects.size() + 1;
-                                         g_scene.add(std::make_shared<RectangleObject>(picId, (int)x, (int)y, (int)w, (int)h, 0xFF00FF00));
-                                     }
-                                 }
-                             }
                         }
                     }
                 }
             }
         }
+
+        if (pSlideData) free(pSlideData);
     }
 
-    if (pSlideData) free(pSlideData);
     zip_close(zip);
+    printf("PPTX imported successfully: %zu objects created\n", g_scene.objects.size());
 }
 
 void engine_render(uint32_t* buffer, int32_t width, int32_t height) {
@@ -182,13 +273,18 @@ void engine_render(uint32_t* buffer, int32_t width, int32_t height) {
 }
 
 void engine_add_rect(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) {
-    int id = g_scene.objects.size() + 1; 
-    // Actually Scene::add should handle ID if passed -1 or similar, but Object ctor takes ID.
-    // We'll trust simple increment for now or let Scene manage if we change Object ctor.
-    // Current Scene doesn't auto-assign ID in add(), it assumes Object has ID.
-    // But Scene::nextUid exists... let's check scene.cpp if I can.
-    // For now, just generate ID here.
+    int id = g_scene.objects.size() + 1;
     g_scene.add(std::make_shared<RectangleObject>(id, x, y, w, h, color));
+}
+
+void engine_add_ellipse(int32_t x, int32_t y, int32_t w, int32_t h, uint32_t color) {
+    int id = g_scene.objects.size() + 1;
+    g_scene.add(std::make_shared<EllipseObject>(id, x, y, w, h, color));
+}
+
+void engine_add_line(int32_t x1, int32_t y1, int32_t x2, int32_t y2, uint32_t color, int32_t thickness) {
+    int id = g_scene.objects.size() + 1;
+    g_scene.add(std::make_shared<LineObject>(id, x1, y1, x2, y2, color, thickness));
 }
 
 void engine_load_font(const uint8_t* data, int32_t length) {
@@ -234,7 +330,7 @@ void engine_select_object(int32_t id) {
 }
 
 void engine_get_object_bounds(int32_t id, int32_t* x, int32_t* y, int32_t* w, int32_t* h) {
-    Object* obj = g_scene.getObject(id);
+    SceneObject* obj = g_scene.getObject(id);
     if (obj) {
         if (x) *x = obj->x;
         if (y) *y = obj->y;

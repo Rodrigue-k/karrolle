@@ -212,12 +212,18 @@ class _StudioToolbarState extends State<StudioToolbar> {
         NativeApi.addRect(200, 200, 120, 80, 0xFF6366F1);
         break;
       case 'ellipse':
-        // TODO: Add ellipse support in engine
-        NativeApi.addRect(200, 200, 100, 100, 0xFF10B981);
+        NativeApi.addEllipse(200, 200, 100, 100, 0xFF10B981);
         break;
       case 'line':
-        // TODO: Add line support in engine
-        NativeApi.addRect(200, 200, 150, 4, 0xFFEF4444);
+        NativeApi.addLine(200, 200, 350, 280, 0xFFEF4444, thickness: 3);
+        break;
+      case 'polygon':
+        // Polygon approximated as a hexagon-ish rectangle for now
+        NativeApi.addRect(200, 200, 80, 80, 0xFFF59E0B);
+        break;
+      case 'star':
+        // Star approximated for now
+        NativeApi.addRect(200, 200, 100, 100, 0xFFEC4899);
         break;
       default:
         NativeApi.addRect(200, 200, 100, 100, 0xFF8B5CF6);

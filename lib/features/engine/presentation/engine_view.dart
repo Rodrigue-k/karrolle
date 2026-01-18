@@ -13,8 +13,16 @@ import 'package:karrolle/features/studio/logic/studio_controller.dart';
 class EngineView extends StatefulWidget {
   final int width;
   final int height;
+  final VoidCallback? onDragStart;
+  final VoidCallback? onDragEnd;
 
-  const EngineView({super.key, this.width = 1920, this.height = 1080});
+  const EngineView({
+    super.key,
+    this.width = 1920,
+    this.height = 1080,
+    this.onDragStart,
+    this.onDragEnd,
+  });
 
   @override
   State<EngineView> createState() => _EngineViewState();
@@ -211,6 +219,9 @@ class _EngineViewState extends State<EngineView>
         calloc.free(pY);
         calloc.free(pW);
         calloc.free(pH);
+
+        // Notify parent that we're dragging
+        widget.onDragStart?.call();
         return;
       }
     }
@@ -238,6 +249,9 @@ class _EngineViewState extends State<EngineView>
       calloc.free(pY);
       calloc.free(pW);
       calloc.free(pH);
+
+      // Notify parent that we're dragging
+      widget.onDragStart?.call();
     } else {
       _draggedObjectId = -1;
     }
@@ -326,6 +340,10 @@ class _EngineViewState extends State<EngineView>
   }
 
   void _handlePointerUp(PointerUpEvent event) {
+    if (_draggedObjectId != -1) {
+      // Notify parent that drag ended
+      widget.onDragEnd?.call();
+    }
     _draggedObjectId = -1;
     _draggedHandleId = -1;
     StudioController().refreshSelection();

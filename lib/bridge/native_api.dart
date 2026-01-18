@@ -23,6 +23,23 @@ typedef EngineAddRectC =
 typedef EngineAddRectDart =
     void Function(int x, int y, int w, int h, int color);
 
+typedef EngineAddEllipseC =
+    Void Function(Int32 x, Int32 y, Int32 w, Int32 h, Uint32 color);
+typedef EngineAddEllipseDart =
+    void Function(int x, int y, int w, int h, int color);
+
+typedef EngineAddLineC =
+    Void Function(
+      Int32 x1,
+      Int32 y1,
+      Int32 x2,
+      Int32 y2,
+      Uint32 color,
+      Int32 thickness,
+    );
+typedef EngineAddLineDart =
+    void Function(int x1, int y1, int x2, int y2, int color, int thickness);
+
 typedef EngineAddTextC =
     Void Function(
       Int32 x,
@@ -143,6 +160,8 @@ class NativeApi {
   static late EngineInitDart _engineInit;
   static late EngineRenderDart _engineRender;
   static late EngineAddRectDart _engineAddRect;
+  static late EngineAddEllipseDart _engineAddEllipse;
+  static late EngineAddLineDart _engineAddLine;
   static late EngineAddTextDart _engineAddText;
   static late EngineAddImageDart _engineAddImage;
   static late EngineLoadFontDart _engineLoadFont;
@@ -186,6 +205,13 @@ class NativeApi {
       );
       _engineAddRect = _lib.lookupFunction<EngineAddRectC, EngineAddRectDart>(
         'engine_add_rect',
+      );
+      _engineAddEllipse = _lib
+          .lookupFunction<EngineAddEllipseC, EngineAddEllipseDart>(
+            'engine_add_ellipse',
+          );
+      _engineAddLine = _lib.lookupFunction<EngineAddLineC, EngineAddLineDart>(
+        'engine_add_line',
       );
       _engineAddText = _lib.lookupFunction<EngineAddTextC, EngineAddTextDart>(
         'engine_add_text',
@@ -299,6 +325,23 @@ class NativeApi {
   static void addRect(int x, int y, int w, int h, int color) {
     if (!_initialized) initialize();
     _engineAddRect(x, y, w, h, color);
+  }
+
+  static void addEllipse(int x, int y, int w, int h, int color) {
+    if (!_initialized) initialize();
+    _engineAddEllipse(x, y, w, h, color);
+  }
+
+  static void addLine(
+    int x1,
+    int y1,
+    int x2,
+    int y2,
+    int color, {
+    int thickness = 2,
+  }) {
+    if (!_initialized) initialize();
+    _engineAddLine(x1, y1, x2, y2, color, thickness);
   }
 
   static void addText(int x, int y, String text, int color, double size) {

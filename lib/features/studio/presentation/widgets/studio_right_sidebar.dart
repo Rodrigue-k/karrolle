@@ -574,6 +574,10 @@ class _PropertiesContentState extends State<_PropertiesContent> {
         return Icons.text_fields;
       case LayerType.image:
         return Icons.image_outlined;
+      case LayerType.ellipse:
+        return Icons.circle_outlined;
+      case LayerType.line:
+        return Icons.remove;
       default:
         return Icons.layers;
     }
@@ -587,6 +591,10 @@ class _PropertiesContentState extends State<_PropertiesContent> {
         return 'Text';
       case LayerType.image:
         return 'Image';
+      case LayerType.ellipse:
+        return 'Ellipse';
+      case LayerType.line:
+        return 'Line';
       default:
         return 'Layer';
     }

@@ -278,6 +278,10 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
         return Icons.text_fields;
       case LayerType.image:
         return Icons.image_outlined;
+      case LayerType.ellipse:
+        return Icons.circle_outlined;
+      case LayerType.line:
+        return Icons.remove;
       default:
         return Icons.layers;
     }
@@ -321,7 +325,11 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
                 StudioController().refreshLayers();
               }),
               _buildQuickAsset(Icons.circle_outlined, 'Circle', () {
-                NativeApi.addRect(150, 150, 100, 100, 0xFF10B981);
+                NativeApi.addEllipse(150, 150, 100, 100, 0xFF10B981);
+                StudioController().refreshLayers();
+              }),
+              _buildQuickAsset(Icons.remove, 'Line', () {
+                NativeApi.addLine(150, 150, 300, 200, 0xFFEF4444, thickness: 3);
                 StudioController().refreshLayers();
               }),
               _buildQuickAsset(Icons.text_fields, 'Text', () {

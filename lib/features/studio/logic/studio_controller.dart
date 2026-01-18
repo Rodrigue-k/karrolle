@@ -4,7 +4,7 @@ import 'package:karrolle/core/logger/app_logger.dart';
 import 'dart:ffi';
 import 'package:ffi/ffi.dart';
 
-enum LayerType { rectangle, text, image, unknown }
+enum LayerType { rectangle, text, image, ellipse, line, unknown }
 
 class LayerInfo {
   final int index;
@@ -53,6 +53,23 @@ class StudioController {
   final ValueNotifier<SelectionState?> selectionNotifier = ValueNotifier(null);
   final ValueNotifier<List<LayerInfo>> layersNotifier = ValueNotifier([]);
 
+  LayerType _typeIdToLayerType(int typeId) {
+    switch (typeId) {
+      case 0:
+        return LayerType.rectangle;
+      case 1:
+        return LayerType.text;
+      case 2:
+        return LayerType.image;
+      case 3:
+        return LayerType.ellipse;
+      case 4:
+        return LayerType.line;
+      default:
+        return LayerType.unknown;
+    }
+  }
+
   void refreshSelection() {
     try {
       final id = NativeApi.getSelectedId();
@@ -72,11 +89,7 @@ class StudioController {
 
       // Determine type
       final typeId = NativeApi.getObjectType(id);
-      LayerType type = LayerType.unknown;
-      if (typeId == 0)
-        type = LayerType.rectangle;
-      else if (typeId == 1)
-        type = LayerType.text;
+      LayerType type = _typeIdToLayerType(typeId);
 
       String text = "";
       double fontSize = 0;
@@ -116,13 +129,7 @@ class StudioController {
         final typeId = NativeApi.getObjectType(i);
         final uid = NativeApi.getObjectUid(i);
 
-        LayerType type = LayerType.unknown;
-        if (typeId == 0)
-          type = LayerType.rectangle;
-        else if (typeId == 1)
-          type = LayerType.text;
-        else if (typeId == 2)
-          type = LayerType.image;
+        LayerType type = _typeIdToLayerType(typeId);
 
         layers.add(LayerInfo(index: i, uid: uid, name: name, type: type));
       }

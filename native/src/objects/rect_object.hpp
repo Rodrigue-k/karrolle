@@ -3,12 +3,12 @@
 #include "../core/utils.hpp"
 #include <algorithm>
 
-class RectangleObject : public Object {
+class RectangleObject : public SceneObject {
 public:
     uint32_t color;
 
     RectangleObject(int id, int x, int y, int w, int h, uint32_t color)
-        : Object(id, "Rectangle", x, y, w, h), color(color) {}
+        : SceneObject(id, "Rectangle", x, y, w, h), color(color) {}
 
     void setColor(uint32_t c) override { color = c; }
     uint32_t getColor() override { return color; }
