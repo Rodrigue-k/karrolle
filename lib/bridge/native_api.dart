@@ -59,6 +59,10 @@ typedef EngineAddImageDart =
 typedef EngineLoadFontC = Void Function(Pointer<Uint8> data, Int32 length);
 typedef EngineLoadFontDart = void Function(Pointer<Uint8> data, int length);
 
+// Import
+typedef EngineImportPptxC = Void Function(Pointer<Utf8> filepath);
+typedef EngineImportPptxDart = void Function(Pointer<Utf8> filepath);
+
 // Interaction (Pick / Move / Update)
 typedef EnginePickC = Int32 Function(Int32 x, Int32 y);
 typedef EnginePickDart = int Function(int x, int y);
@@ -142,6 +146,7 @@ class NativeApi {
   static late EngineAddTextDart _engineAddText;
   static late EngineAddImageDart _engineAddImage;
   static late EngineLoadFontDart _engineLoadFont;
+  static late EngineImportPptxDart _engineImportPptx;
   static late EnginePickDart _enginePick;
   static late EnginePickHandleDart _enginePickHandle;
   static late EngineMoveObjectDart _engineMoveObject;
@@ -166,6 +171,7 @@ class NativeApi {
 
     try {
       if (Platform.isWindows) {
+        // Standard loading since we aren't using Aspose dependencies
         _lib = DynamicLibrary.open('engine.dll');
       } else {
         throw UnsupportedError('Unsupported platform');
@@ -191,6 +197,10 @@ class NativeApi {
       _engineLoadFont = _lib
           .lookupFunction<EngineLoadFontC, EngineLoadFontDart>(
             'engine_load_font',
+          );
+      _engineImportPptx = _lib
+          .lookupFunction<EngineImportPptxC, EngineImportPptxDart>(
+            'engine_import_pptx',
           );
       _enginePick = _lib.lookupFunction<EnginePickC, EnginePickDart>(
         'engine_pick',
@@ -320,6 +330,13 @@ class NativeApi {
     final list = ptr.asTypedList(data.length);
     list.setAll(0, data);
     _engineLoadFont(ptr, data.length);
+    calloc.free(ptr);
+  }
+
+  static void importPptx(String filepath) {
+    if (!_initialized) initialize();
+    final ptr = filepath.toNativeUtf8();
+    _engineImportPptx(ptr);
     calloc.free(ptr);
   }
 

@@ -1,7 +1,20 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:karrolle/bridge/native_api.dart';
 import 'package:flutter/material.dart';
 
 class StudioAppBar extends StatelessWidget {
   const StudioAppBar({super.key});
+
+  Future<void> _pickAndImportPptx() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pptx'],
+    );
+
+    if (result != null && result.files.single.path != null) {
+      NativeApi.importPptx(result.files.single.path!);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +56,15 @@ class StudioAppBar extends StatelessWidget {
           const Spacer(),
 
           // Actions
+          Tooltip(
+            message: 'Import PPTX',
+            child: _buildActionButton(
+              Icons.file_upload_outlined,
+              Colors.orangeAccent,
+              onTap: _pickAndImportPptx,
+            ),
+          ),
+          const SizedBox(width: 12),
           _buildActionButton(Icons.play_arrow_rounded, Colors.greenAccent),
           const SizedBox(width: 12),
           _buildActionButton(Icons.share_outlined, Colors.white70),
@@ -74,15 +96,18 @@ class StudioAppBar extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(IconData icon, Color color) {
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(4),
-        color: Colors.white.withAlpha(13),
+  Widget _buildActionButton(IconData icon, Color color, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 28,
+        height: 28,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(4),
+          color: Colors.white.withAlpha(13),
+        ),
+        child: Icon(icon, size: 16, color: color),
       ),
-      child: Icon(icon, size: 16, color: color),
     );
   }
 }

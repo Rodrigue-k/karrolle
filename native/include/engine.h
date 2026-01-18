@@ -27,6 +27,8 @@ EXPORT void engine_add_image(int32_t x, int32_t y, int32_t w, int32_t h, const u
 // Font Management
 EXPORT void engine_load_font(const uint8_t* data, int32_t length);
 
+EXPORT void engine_import_pptx(const char* filepath);
+
 // Interaction
 EXPORT int32_t engine_pick(int32_t x, int32_t y);
 EXPORT int32_t engine_pick_handle(int32_t x, int32_t y);
