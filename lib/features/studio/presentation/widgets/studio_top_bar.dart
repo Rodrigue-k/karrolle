@@ -1,16 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:karrolle/features/studio/logic/history_manager.dart';
+import 'package:karrolle/features/studio/logic/export_service.dart';
 
 /// Top bar similar to Figma/Canva with logo, menus, and actions
 class StudioTopBar extends StatelessWidget {
   final String documentName;
   final VoidCallback? onToggleLeftSidebar;
   final VoidCallback? onToggleRightSidebar;
+  final VoidCallback? onNewDocument;
+  final VoidCallback? onOpenDocument;
+  final VoidCallback? onSaveDocument;
+  final int documentWidth;
+  final int documentHeight;
 
   const StudioTopBar({
     super.key,
     required this.documentName,
     this.onToggleLeftSidebar,
     this.onToggleRightSidebar,
+    this.onNewDocument,
+    this.onOpenDocument,
+    this.onSaveDocument,
+    this.documentWidth = 1920,
+    this.documentHeight = 1080,
   });
 
   @override
@@ -30,14 +42,33 @@ class StudioTopBar extends StatelessWidget {
           _buildVerticalDivider(),
 
           // File Menu
-          _buildMenuButton('File', [
-            _MenuItem('New', Icons.add, () {}),
-            _MenuItem('Open', Icons.folder_open, () {}),
-            _MenuItem('Save', Icons.save, () {}),
-            _MenuItem('Export', Icons.download, () {}),
+          _buildMenuButton(context, 'File', [
+            _MenuItem('New', Icons.add, onNewDocument ?? () {}),
+            _MenuItem('Open', Icons.folder_open, onOpenDocument ?? () {}),
+            _MenuItem('Save', Icons.save, onSaveDocument ?? () {}),
+            _MenuItem('Export as PNG', Icons.image, () => _exportPng(context)),
+            _MenuItem(
+              'Export as PDF',
+              Icons.picture_as_pdf,
+              () => _exportPdf(context),
+            ),
           ]),
-          _buildMenuButton('Edit', []),
-          _buildMenuButton('View', []),
+          _buildMenuButton(context, 'Edit', [
+            _MenuItem('Undo', Icons.undo, () => HistoryManager().undo()),
+            _MenuItem('Redo', Icons.redo, () => HistoryManager().redo()),
+          ]),
+          _buildMenuButton(context, 'View', [
+            _MenuItem(
+              'Toggle Left Panel',
+              Icons.view_sidebar,
+              onToggleLeftSidebar ?? () {},
+            ),
+            _MenuItem(
+              'Toggle Right Panel',
+              Icons.view_sidebar_outlined,
+              onToggleRightSidebar ?? () {},
+            ),
+          ]),
 
           const Spacer(),
 
@@ -67,16 +98,28 @@ class StudioTopBar extends StatelessWidget {
 
           const Spacer(),
 
-          // Action Buttons
-          _buildActionButton(
-            icon: Icons.undo,
-            tooltip: 'Undo (Ctrl+Z)',
-            onTap: () {},
+          // Undo/Redo with state awareness
+          ValueListenableBuilder<bool>(
+            valueListenable: HistoryManager().canUndoNotifier,
+            builder: (context, canUndo, _) {
+              return _buildActionButton(
+                icon: Icons.undo,
+                tooltip: HistoryManager().undoDescription ?? 'Undo (Ctrl+Z)',
+                onTap: canUndo ? () => HistoryManager().undo() : null,
+                enabled: canUndo,
+              );
+            },
           ),
-          _buildActionButton(
-            icon: Icons.redo,
-            tooltip: 'Redo (Ctrl+Y)',
-            onTap: () {},
+          ValueListenableBuilder<bool>(
+            valueListenable: HistoryManager().canRedoNotifier,
+            builder: (context, canRedo, _) {
+              return _buildActionButton(
+                icon: Icons.redo,
+                tooltip: HistoryManager().redoDescription ?? 'Redo (Ctrl+Y)',
+                onTap: canRedo ? () => HistoryManager().redo() : null,
+                enabled: canRedo,
+              );
+            },
           ),
 
           _buildVerticalDivider(),
@@ -96,7 +139,78 @@ class StudioTopBar extends StatelessWidget {
 
           _buildVerticalDivider(),
 
-          // Share / Export
+          // Export button
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: PopupMenuButton<String>(
+              offset: const Offset(0, 40),
+              color: const Color(0xFF2D2D2D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              onSelected: (value) {
+                if (value == 'png') _exportPng(context);
+                if (value == 'pdf') _exportPdf(context);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.download, size: 16, color: Colors.white),
+                    SizedBox(width: 6),
+                    Text(
+                      'Export',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Icon(Icons.arrow_drop_down, size: 16, color: Colors.white),
+                  ],
+                ),
+              ),
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'png',
+                  child: Row(
+                    children: [
+                      Icon(Icons.image, size: 16, color: Colors.white60),
+                      SizedBox(width: 12),
+                      Text('PNG Image', style: TextStyle(color: Colors.white)),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'pdf',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.picture_as_pdf,
+                        size: 16,
+                        color: Colors.white60,
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'PDF Document',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Share button
           Container(
             margin: const EdgeInsets.only(right: 12),
             child: ElevatedButton.icon(
@@ -138,6 +252,38 @@ class StudioTopBar extends StatelessWidget {
     );
   }
 
+  void _exportPng(BuildContext context) async {
+    final result = await ExportService().exportAsPng(
+      width: documentWidth,
+      height: documentHeight,
+      suggestedName: '$documentName.png',
+    );
+    if (result != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Exported to: $result'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    }
+  }
+
+  void _exportPdf(BuildContext context) async {
+    final result = await ExportService().exportAsPdf(
+      width: documentWidth,
+      height: documentHeight,
+      suggestedName: '$documentName.pdf',
+    );
+    if (result != null && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Exported to: $result'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    }
+  }
+
   Widget _buildLogoSection() {
     return Container(
       width: 48,
@@ -172,11 +318,19 @@ class StudioTopBar extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuButton(String label, List<_MenuItem> items) {
+  Widget _buildMenuButton(
+    BuildContext context,
+    String label,
+    List<_MenuItem> items,
+  ) {
     return PopupMenuButton<String>(
       offset: const Offset(0, 40),
       color: const Color(0xFF2D2D2D),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      onSelected: (value) {
+        final item = items.firstWhere((i) => i.label == value);
+        item.onTap();
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Text(
@@ -209,11 +363,12 @@ class StudioTopBar extends StatelessWidget {
     required String tooltip,
     VoidCallback? onTap,
     bool flipHorizontal = false,
+    bool enabled = true,
   }) {
     return Tooltip(
       message: tooltip,
       child: InkWell(
-        onTap: onTap,
+        onTap: enabled ? onTap : null,
         borderRadius: BorderRadius.circular(6),
         child: Container(
           width: 32,
@@ -222,7 +377,11 @@ class StudioTopBar extends StatelessWidget {
           alignment: Alignment.center,
           child: Transform.flip(
             flipX: flipHorizontal,
-            child: Icon(icon, size: 18, color: Colors.white60),
+            child: Icon(
+              icon,
+              size: 18,
+              color: enabled ? Colors.white60 : Colors.white24,
+            ),
           ),
         ),
       ),

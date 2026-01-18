@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:karrolle/bridge/native_api.dart';
 import 'package:karrolle/core/logger/app_logger.dart';
 import 'package:karrolle/features/studio/logic/studio_controller.dart';
+import 'package:karrolle/features/studio/logic/page_manager.dart';
 
 /// Figma/Canva-style left sidebar with tabs for Layers, Assets, and Pages
 class StudioLeftSidebar extends StatefulWidget {
@@ -393,34 +394,67 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
   }
 
   Widget _buildPagesTab() {
-    return Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        children: [
-          // Add page button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {}, // TODO: Add page
-              icon: const Icon(Icons.add, size: 18),
-              label: const Text('Add Page'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white70,
-                side: const BorderSide(color: Color(0xFF4A4A4A)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
+    return ValueListenableBuilder<List<DocumentPage>>(
+      valueListenable: PageManager().pagesNotifier,
+      builder: (context, pages, _) {
+        return ValueListenableBuilder<int>(
+          valueListenable: PageManager().currentPageNotifier,
+          builder: (context, currentIndex, _) {
+            return Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  // Add page button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        PageManager().addPage();
+                      },
+                      icon: const Icon(Icons.add, size: 18),
+                      label: const Text('Add Page'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: const BorderSide(color: Color(0xFF4A4A4A)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Page list
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: pages.length,
+                      itemBuilder: (context, index) {
+                        final page = pages[index];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _buildPageThumbnail(
+                            index,
+                            page.name,
+                            isSelected: index == currentIndex,
+                            onTap: () => PageManager().goToPage(index),
+                            onDelete: pages.length > 1
+                                ? () => PageManager().removePage(index)
+                                : null,
+                            onDuplicate: () =>
+                                PageManager().duplicatePage(index),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
-
-          const SizedBox(height: 16),
-
-          // Page thumbnail
-          _buildPageThumbnail(1, 'Page 1', isSelected: true),
-        ],
-      ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -428,9 +462,12 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
     int index,
     String label, {
     bool isSelected = false,
+    VoidCallback? onTap,
+    VoidCallback? onDelete,
+    VoidCallback? onDuplicate,
   }) {
     return InkWell(
-      onTap: () {},
+      onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(8),
@@ -445,6 +482,28 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
         ),
         child: Row(
           children: [
+            // Page number
+            Container(
+              width: 24,
+              height: 24,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? const Color(0xFF6366F1)
+                    : const Color(0xFF3C3C3C),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                '${index + 1}',
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
             // Page preview
             Container(
               width: 48,
@@ -465,6 +524,7 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
                   Text(
                     label,
                     style: const TextStyle(fontSize: 12, color: Colors.white70),
+                    overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     '1920 × 1080',
@@ -477,8 +537,58 @@ class _StudioLeftSidebarState extends State<StudioLeftSidebar>
               ),
             ),
 
-            // More options
-            const Icon(Icons.more_vert, size: 16, color: Colors.white38),
+            // Context menu
+            PopupMenuButton<String>(
+              icon: const Icon(
+                Icons.more_vert,
+                size: 16,
+                color: Colors.white38,
+              ),
+              color: const Color(0xFF2D2D2D),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              onSelected: (value) {
+                if (value == 'duplicate') onDuplicate?.call();
+                if (value == 'delete') onDelete?.call();
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'duplicate',
+                  child: Row(
+                    children: [
+                      Icon(Icons.copy, size: 16, color: Colors.white60),
+                      SizedBox(width: 12),
+                      Text(
+                        'Duplicate',
+                        style: TextStyle(color: Colors.white, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                if (onDelete != null)
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_outline,
+                          size: 16,
+                          color: Colors.redAccent,
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          'Delete',
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ],
         ),
       ),
